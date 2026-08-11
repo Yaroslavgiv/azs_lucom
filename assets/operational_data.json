@@ -1,0 +1,1642 @@
+{
+  "station_numbers": [
+    "47252",
+    "47253",
+    "47471",
+    "47472",
+    "53061",
+    "53062",
+    "53063",
+    "53065",
+    "53066",
+    "53067",
+    "53162",
+    "53196",
+    "53254",
+    "53261",
+    "53266",
+    "53267",
+    "78013",
+    "78037",
+    "78070",
+    "78072",
+    "78115",
+    "78117",
+    "78118",
+    "78120",
+    "78126",
+    "78129",
+    "78134",
+    "78136",
+    "78140",
+    "78141",
+    "78164",
+    "78167",
+    "78168",
+    "78172",
+    "78179"
+  ],
+  "requests": [
+    {
+      "station_number": "78115",
+      "type": "НЗ",
+      "request_type": "Не срочная заявка",
+      "description": "Замена АКБ",
+      "date_created": "2025-12-08",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "78072",
+      "type": "НЗ",
+      "request_type": "Не срочная заявка",
+      "description": "Замена АКБ 1217",
+      "date_created": "2025-12-09",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "78141",
+      "type": "НЗ",
+      "request_type": "Не срочная заявка",
+      "description": "Замена МКИ 2штуки",
+      "date_created": "2025-12-09",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "78117",
+      "type": "НЗ",
+      "request_type": "Не срочная заявка",
+      "description": "Заменили компьютерную мышь",
+      "date_created": "2025-12-09",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "78117",
+      "type": "НЗ",
+      "request_type": "Заявки с заказом оборудования",
+      "description": "Не работает HDD raide\nДля raide требуется HDD 6 tb",
+      "date_created": "2025-12-09",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "78117",
+      "type": "НЗ",
+      "request_type": "Заявки с заказом оборудования",
+      "description": "Заменили 2 АКБ 12045",
+      "date_created": "2025-12-09",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "53266",
+      "type": "НЗ",
+      "request_type": "Не срочная заявка",
+      "description": "Не работает камера ТРК 1",
+      "date_created": "2025-12-25",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "53266",
+      "type": "НЗ",
+      "request_type": "Не срочная заявка",
+      "description": "Мутная камера Слив 32",
+      "date_created": "2025-12-25",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "53266",
+      "type": "НЗ",
+      "request_type": "Не срочная заявка",
+      "description": "Не работают камеры 15, 41, 29, 39, 14",
+      "date_created": "2025-12-25",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "53065",
+      "type": "НЗ",
+      "request_type": "Не срочная заявка",
+      "description": "Не работает камера на слив",
+      "date_created": "2025-12-26",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "78172",
+      "type": "НЗ",
+      "request_type": "Не срочная заявка",
+      "description": "Геркон зона слива",
+      "date_created": "2025-12-31",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "78072",
+      "type": "НЗ",
+      "request_type": "Не срочная заявка",
+      "description": "Не работает геркон Слив",
+      "date_created": "2026-01-02",
+      "status": "closed",
+      "close_comment": "Оепе",
+      "close_date": "2026-01-02 10:41"
+    },
+    {
+      "station_number": "78134",
+      "type": "НЗ",
+      "request_type": "Не срочная заявка",
+      "description": "Не работает ИПП слив",
+      "date_created": "2026-01-02",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "78134",
+      "type": "НЗ",
+      "request_type": "Новая Заявка",
+      "description": "Не работает геркон ТРК4",
+      "date_created": "2026-01-02",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "78134",
+      "type": "НЗ",
+      "request_type": "Не срочная заявка",
+      "description": "Не работает геркон трк4",
+      "date_created": "2026-01-02",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "78167",
+      "type": "НЗ",
+      "request_type": "Не срочная заявка",
+      "description": "Не работает табличка АСПТ 2",
+      "date_created": "2026-01-19",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "78115",
+      "type": "НЗ",
+      "request_type": "Не срочная заявка",
+      "description": "Установить электрозамок на дверь",
+      "date_created": "2026-01-19",
+      "status": "closed",
+      "close_comment": "Оак",
+      "close_date": "2026-01-19 19:53"
+    },
+    {
+      "station_number": "78115",
+      "type": "НЗ",
+      "request_type": "Не срочная заявка",
+      "description": "Гнркон правой АПТ заглушка",
+      "date_created": "2026-02-03",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "53061",
+      "type": "НЗ",
+      "request_type": "Не срочная заявка",
+      "description": "Крысы прогрызли кабель пож 3 шлейф",
+      "date_created": "2026-03-06",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "53062",
+      "type": "НЗ",
+      "request_type": "Не срочная заявка",
+      "description": "5 герконов замена",
+      "date_created": "2026-03-06",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "53067",
+      "type": "НЗ",
+      "request_type": "Не срочная заявка",
+      "description": "Нужен новый домофон commax",
+      "date_created": "2026-03-13",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "53065",
+      "type": "НЗ",
+      "request_type": "Заявки с заказом оборудования",
+      "description": "Необходимо внутренняя камера трассер",
+      "date_created": "2026-03-14",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "78129",
+      "type": "НЗ",
+      "request_type": "Не срочная заявка",
+      "description": "Не работает сервер запись сканер не ведется",
+      "date_created": "2026-04-07",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "53267",
+      "type": "НЗ",
+      "request_type": "Не срочная заявка",
+      "description": "Не работает камера трк 3 и трк 7",
+      "date_created": "2026-04-15",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "53267",
+      "type": "НЗ",
+      "request_type": "53266",
+      "description": "53266",
+      "date_created": "2026-04-15",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "78164",
+      "type": "НЗ",
+      "request_type": "Не срочная заявка",
+      "description": "Заменили аккумуляторы аспт",
+      "date_created": "2026-04-17",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "53162",
+      "type": "НЗ",
+      "request_type": "ГГС отсутствует аудиокарта в сервере",
+      "description": "Не срочная заявка",
+      "date_created": "2026-04-24",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "53162",
+      "type": "НЗ",
+      "request_type": "Не срочная заявка",
+      "description": "ГГС отсутствует аудиокарта в сервере",
+      "date_created": "2026-04-24",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "53061",
+      "type": "НЗ",
+      "request_type": "Не срочная заявка",
+      "description": "Требуется что писельный разъём для инжектора антенны камеры слива",
+      "date_created": "2026-04-24",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "78141",
+      "type": "НЗ",
+      "request_type": "Не срочная заявка",
+      "description": "Не работает ИПП зона слива",
+      "date_created": "2026-05-08",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "78141",
+      "type": "НЗ",
+      "request_type": "Заявки с заказом оборудования",
+      "description": "Необходимо комплектовать аккумуляторами 12045 - 2шт АСПТ",
+      "date_created": "2026-05-08",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "78141",
+      "type": "НЗ",
+      "request_type": "Заявки с заказом оборудования",
+      "description": "Необходимо комплектовать аккумуляторами 12045 - 2шт АСПТ",
+      "date_created": "2026-05-08",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "78141",
+      "type": "НЗ",
+      "request_type": "Заявки с заказом оборудования",
+      "description": "Необходимо комплектовать аккумуляторами 12045 - 2шт АСПТ",
+      "date_created": "2026-05-08",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "78141",
+      "type": "НЗ",
+      "request_type": "Не срочная заявка",
+      "description": "Не срочная заявка",
+      "date_created": "2026-05-08",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "78141",
+      "type": "НЗ",
+      "request_type": "Не срочная заявка",
+      "description": "Отсутствует USB аудиокарта",
+      "date_created": "2026-05-08",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "78172",
+      "type": "НЗ",
+      "request_type": "Не срочная заявка",
+      "description": "Не работают ИПП трк1 - 2шт, трк 4 - 2шт, и зона слива",
+      "date_created": "2026-05-16",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "78129",
+      "type": "НЗ",
+      "request_type": "Не срочная заявка",
+      "description": "Не работают камера слив трк 3",
+      "date_created": "2026-05-16",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "53266",
+      "type": "НЗ",
+      "request_type": "Не срочная заявка",
+      "description": "Заменить монитор урм менеджер.",
+      "date_created": "2026-05-26",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "53266",
+      "type": "НЗ",
+      "request_type": "Не срочная заявка",
+      "description": "Необходимо мышка для операторов.",
+      "date_created": "2026-05-26",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "53266",
+      "type": "НЗ",
+      "request_type": "Не срочная заявка",
+      "description": "Необходим кронштейн для монитора менеджера.",
+      "date_created": "2026-05-26",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "53066",
+      "type": "НЗ",
+      "request_type": "Не срочная заявка",
+      "description": "Необходим жесткий диск для регистратора хиквижен",
+      "date_created": "2026-05-26",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "47252",
+      "type": "НЗ",
+      "request_type": "Не срочная заявка",
+      "description": "Нужна видеокарта для срм",
+      "date_created": "2026-05-26",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    },
+    {
+      "station_number": "78120",
+      "type": "НЗ",
+      "request_type": "Не срочная заявка",
+      "description": "Не работают камеры трк 1 и выезд",
+      "date_created": "2026-05-27",
+      "status": "open",
+      "close_comment": null,
+      "close_date": null
+    }
+  ],
+  "maintenance": [
+    {
+      "station_number": "47252",
+      "month": "2025-12",
+      "status": "done",
+      "date_done": "2025-12-18 06:28",
+      "to_type": null
+    },
+    {
+      "station_number": "47253",
+      "month": "2025-12",
+      "status": "done",
+      "date_done": "2025-12-18 06:28",
+      "to_type": null
+    },
+    {
+      "station_number": "47471",
+      "month": "2025-12",
+      "status": "done",
+      "date_done": "2025-12-08 09:12",
+      "to_type": null
+    },
+    {
+      "station_number": "53061",
+      "month": "2025-12",
+      "status": "done",
+      "date_done": "2025-12-18 08:58",
+      "to_type": null
+    },
+    {
+      "station_number": "53062",
+      "month": "2025-12",
+      "status": "done",
+      "date_done": "2025-12-23 21:57",
+      "to_type": null
+    },
+    {
+      "station_number": "53063",
+      "month": "2025-12",
+      "status": "done",
+      "date_done": "2025-12-23 21:57",
+      "to_type": null
+    },
+    {
+      "station_number": "53065",
+      "month": "2025-12",
+      "status": "done",
+      "date_done": "2025-12-26 14:37",
+      "to_type": null
+    },
+    {
+      "station_number": "53067",
+      "month": "2025-12",
+      "status": "done",
+      "date_done": "2025-12-26 09:33",
+      "to_type": null
+    },
+    {
+      "station_number": "53162",
+      "month": "2025-12",
+      "status": "done",
+      "date_done": "2025-12-23 21:57",
+      "to_type": null
+    },
+    {
+      "station_number": "53196",
+      "month": "2025-12",
+      "status": "done",
+      "date_done": "2025-12-26 14:39",
+      "to_type": null
+    },
+    {
+      "station_number": "53254",
+      "month": "2025-12",
+      "status": "done",
+      "date_done": "2025-12-26 14:37",
+      "to_type": null
+    },
+    {
+      "station_number": "53261",
+      "month": "2025-12",
+      "status": "done",
+      "date_done": "2025-12-23 21:58",
+      "to_type": null
+    },
+    {
+      "station_number": "53266",
+      "month": "2025-12",
+      "status": "done",
+      "date_done": "2025-12-25 14:13",
+      "to_type": null
+    },
+    {
+      "station_number": "53267",
+      "month": "2025-12",
+      "status": "done",
+      "date_done": "2025-12-26 09:35",
+      "to_type": null
+    },
+    {
+      "station_number": "78013",
+      "month": "2025-12",
+      "status": "done",
+      "date_done": "2025-12-09 13:52",
+      "to_type": null
+    },
+    {
+      "station_number": "78037",
+      "month": "2025-12",
+      "status": "done",
+      "date_done": "2025-12-09 22:52",
+      "to_type": null
+    },
+    {
+      "station_number": "78070",
+      "month": "2025-12",
+      "status": "done",
+      "date_done": "2025-12-09 22:51",
+      "to_type": null
+    },
+    {
+      "station_number": "78072",
+      "month": "2025-12",
+      "status": "done",
+      "date_done": "2025-12-08 16:04",
+      "to_type": null
+    },
+    {
+      "station_number": "78115",
+      "month": "2025-12",
+      "status": "done",
+      "date_done": "2025-12-08 13:25",
+      "to_type": null
+    },
+    {
+      "station_number": "78117",
+      "month": "2025-12",
+      "status": "done",
+      "date_done": "2025-12-09 13:53",
+      "to_type": null
+    },
+    {
+      "station_number": "78118",
+      "month": "2025-12",
+      "status": "done",
+      "date_done": "2025-12-07 21:12",
+      "to_type": null
+    },
+    {
+      "station_number": "78120",
+      "month": "2025-12",
+      "status": "done",
+      "date_done": "2025-12-18 06:23",
+      "to_type": null
+    },
+    {
+      "station_number": "78126",
+      "month": "2025-12",
+      "status": "done",
+      "date_done": "2025-12-08 12:24",
+      "to_type": null
+    },
+    {
+      "station_number": "78129",
+      "month": "2025-12",
+      "status": "done",
+      "date_done": "2025-12-08 19:39",
+      "to_type": null
+    },
+    {
+      "station_number": "78134",
+      "month": "2025-12",
+      "status": "done",
+      "date_done": "2025-12-08 19:39",
+      "to_type": null
+    },
+    {
+      "station_number": "78136",
+      "month": "2025-12",
+      "status": "done",
+      "date_done": "2025-12-18 06:24",
+      "to_type": null
+    },
+    {
+      "station_number": "78140",
+      "month": "2025-12",
+      "status": "done",
+      "date_done": "2025-12-08 09:13",
+      "to_type": null
+    },
+    {
+      "station_number": "78141",
+      "month": "2025-12",
+      "status": "done",
+      "date_done": "2025-12-08 14:42",
+      "to_type": null
+    },
+    {
+      "station_number": "78164",
+      "month": "2025-12",
+      "status": "done",
+      "date_done": "2025-12-18 06:23",
+      "to_type": null
+    },
+    {
+      "station_number": "78167",
+      "month": "2025-12",
+      "status": "done",
+      "date_done": "2025-12-18 06:23",
+      "to_type": null
+    },
+    {
+      "station_number": "78168",
+      "month": "2025-12",
+      "status": "done",
+      "date_done": "2025-12-07 21:14",
+      "to_type": null
+    },
+    {
+      "station_number": "78172",
+      "month": "2025-12",
+      "status": "done",
+      "date_done": "2025-12-09 13:52",
+      "to_type": null
+    },
+    {
+      "station_number": "78179",
+      "month": "2025-12",
+      "status": "done",
+      "date_done": "2025-12-09 22:50",
+      "to_type": null
+    },
+    {
+      "station_number": "47252",
+      "month": "2026-01",
+      "status": "done",
+      "date_done": "2026-01-28 09:07",
+      "to_type": null
+    },
+    {
+      "station_number": "47253",
+      "month": "2026-01",
+      "status": "done",
+      "date_done": "2026-01-28 09:07",
+      "to_type": null
+    },
+    {
+      "station_number": "47471",
+      "month": "2026-01",
+      "status": "done",
+      "date_done": "2026-01-28 09:10",
+      "to_type": null
+    },
+    {
+      "station_number": "53061",
+      "month": "2026-01",
+      "status": "done",
+      "date_done": "2026-01-28 09:09",
+      "to_type": null
+    },
+    {
+      "station_number": "53062",
+      "month": "2026-01",
+      "status": "done",
+      "date_done": "2026-01-28 09:10",
+      "to_type": null
+    },
+    {
+      "station_number": "53063",
+      "month": "2026-01",
+      "status": "done",
+      "date_done": "2026-01-28 09:10",
+      "to_type": null
+    },
+    {
+      "station_number": "53065",
+      "month": "2026-01",
+      "status": "done",
+      "date_done": "2026-01-28 09:08",
+      "to_type": null
+    },
+    {
+      "station_number": "53066",
+      "month": "2026-01",
+      "status": "done",
+      "date_done": "2026-01-28 09:09",
+      "to_type": null
+    },
+    {
+      "station_number": "53067",
+      "month": "2026-01",
+      "status": "done",
+      "date_done": "2026-01-28 09:08",
+      "to_type": null
+    },
+    {
+      "station_number": "53162",
+      "month": "2026-01",
+      "status": "done",
+      "date_done": "2026-01-28 09:10",
+      "to_type": null
+    },
+    {
+      "station_number": "53196",
+      "month": "2026-01",
+      "status": "done",
+      "date_done": "2026-01-28 09:09",
+      "to_type": null
+    },
+    {
+      "station_number": "53254",
+      "month": "2026-01",
+      "status": "done",
+      "date_done": "2026-01-28 09:08",
+      "to_type": null
+    },
+    {
+      "station_number": "53261",
+      "month": "2026-01",
+      "status": "done",
+      "date_done": "2026-01-28 09:09",
+      "to_type": null
+    },
+    {
+      "station_number": "53266",
+      "month": "2026-01",
+      "status": "done",
+      "date_done": "2026-01-28 09:08",
+      "to_type": null
+    },
+    {
+      "station_number": "53267",
+      "month": "2026-01",
+      "status": "done",
+      "date_done": "2026-01-28 09:08",
+      "to_type": null
+    },
+    {
+      "station_number": "78013",
+      "month": "2026-01",
+      "status": "done",
+      "date_done": "2026-01-19 15:37",
+      "to_type": null
+    },
+    {
+      "station_number": "78037",
+      "month": "2026-01",
+      "status": "done",
+      "date_done": "2026-01-09 13:36",
+      "to_type": null
+    },
+    {
+      "station_number": "78070",
+      "month": "2026-01",
+      "status": "done",
+      "date_done": "2026-01-09 13:36",
+      "to_type": null
+    },
+    {
+      "station_number": "78072",
+      "month": "2026-01",
+      "status": "done",
+      "date_done": "2026-01-02 10:40",
+      "to_type": null
+    },
+    {
+      "station_number": "78115",
+      "month": "2026-01",
+      "status": "done",
+      "date_done": "2026-01-19 19:52",
+      "to_type": null
+    },
+    {
+      "station_number": "78117",
+      "month": "2026-01",
+      "status": "done",
+      "date_done": "2026-01-09 12:23",
+      "to_type": null
+    },
+    {
+      "station_number": "78118",
+      "month": "2026-01",
+      "status": "done",
+      "date_done": "2026-01-19 15:38",
+      "to_type": null
+    },
+    {
+      "station_number": "78120",
+      "month": "2026-01",
+      "status": "done",
+      "date_done": "2026-01-19 08:28",
+      "to_type": null
+    },
+    {
+      "station_number": "78126",
+      "month": "2026-01",
+      "status": "done",
+      "date_done": "2026-01-12 19:35",
+      "to_type": null
+    },
+    {
+      "station_number": "78129",
+      "month": "2026-01",
+      "status": "done",
+      "date_done": "2026-01-19 08:27",
+      "to_type": null
+    },
+    {
+      "station_number": "78134",
+      "month": "2026-01",
+      "status": "done",
+      "date_done": "2026-01-02 11:20",
+      "to_type": null
+    },
+    {
+      "station_number": "78136",
+      "month": "2026-01",
+      "status": "done",
+      "date_done": "2026-01-19 08:28",
+      "to_type": null
+    },
+    {
+      "station_number": "78140",
+      "month": "2026-01",
+      "status": "done",
+      "date_done": "2026-01-02 12:23",
+      "to_type": null
+    },
+    {
+      "station_number": "78141",
+      "month": "2026-01",
+      "status": "done",
+      "date_done": "2026-01-04 08:19",
+      "to_type": null
+    },
+    {
+      "station_number": "78164",
+      "month": "2026-01",
+      "status": "done",
+      "date_done": "2026-01-19 19:53",
+      "to_type": null
+    },
+    {
+      "station_number": "78167",
+      "month": "2026-01",
+      "status": "done",
+      "date_done": "2026-01-19 10:52",
+      "to_type": null
+    },
+    {
+      "station_number": "78168",
+      "month": "2026-01",
+      "status": "done",
+      "date_done": "2026-01-19 15:37",
+      "to_type": null
+    },
+    {
+      "station_number": "78172",
+      "month": "2026-01",
+      "status": "done",
+      "date_done": "2026-01-04 08:19",
+      "to_type": null
+    },
+    {
+      "station_number": "78179",
+      "month": "2026-01",
+      "status": "done",
+      "date_done": "2026-01-19 08:27",
+      "to_type": null
+    },
+    {
+      "station_number": "47252",
+      "month": "2026-02",
+      "status": "done",
+      "date_done": "2026-02-25 06:45",
+      "to_type": null
+    },
+    {
+      "station_number": "47253",
+      "month": "2026-02",
+      "status": "done",
+      "date_done": "2026-02-25 06:46",
+      "to_type": null
+    },
+    {
+      "station_number": "53065",
+      "month": "2026-02",
+      "status": "done",
+      "date_done": "2026-02-25 06:48",
+      "to_type": null
+    },
+    {
+      "station_number": "53066",
+      "month": "2026-02",
+      "status": "done",
+      "date_done": "2026-02-25 06:48",
+      "to_type": null
+    },
+    {
+      "station_number": "53067",
+      "month": "2026-02",
+      "status": "done",
+      "date_done": "2026-02-25 06:46",
+      "to_type": null
+    },
+    {
+      "station_number": "53254",
+      "month": "2026-02",
+      "status": "done",
+      "date_done": "2026-02-25 06:47",
+      "to_type": null
+    },
+    {
+      "station_number": "78013",
+      "month": "2026-02",
+      "status": "done",
+      "date_done": "2026-02-02 10:42",
+      "to_type": null
+    },
+    {
+      "station_number": "78037",
+      "month": "2026-02",
+      "status": "done",
+      "date_done": "2026-02-02 13:14",
+      "to_type": null
+    },
+    {
+      "station_number": "78070",
+      "month": "2026-02",
+      "status": "done",
+      "date_done": "2026-02-02 13:41",
+      "to_type": null
+    },
+    {
+      "station_number": "78072",
+      "month": "2026-02",
+      "status": "done",
+      "date_done": "2026-02-02 16:41",
+      "to_type": null
+    },
+    {
+      "station_number": "78115",
+      "month": "2026-02",
+      "status": "done",
+      "date_done": "2026-02-03 14:39",
+      "to_type": null
+    },
+    {
+      "station_number": "78117",
+      "month": "2026-02",
+      "status": "done",
+      "date_done": "2026-02-02 12:33",
+      "to_type": null
+    },
+    {
+      "station_number": "78118",
+      "month": "2026-02",
+      "status": "done",
+      "date_done": "2026-02-17 17:55",
+      "to_type": "ТО-2"
+    },
+    {
+      "station_number": "78126",
+      "month": "2026-02",
+      "status": "done",
+      "date_done": "2026-02-02 15:45",
+      "to_type": null
+    },
+    {
+      "station_number": "78129",
+      "month": "2026-02",
+      "status": "done",
+      "date_done": "2026-02-17 17:57",
+      "to_type": "ТО-2"
+    },
+    {
+      "station_number": "78134",
+      "month": "2026-02",
+      "status": "done",
+      "date_done": "2026-02-03 16:31",
+      "to_type": null
+    },
+    {
+      "station_number": "78140",
+      "month": "2026-02",
+      "status": "done",
+      "date_done": "2026-02-03 16:49",
+      "to_type": null
+    },
+    {
+      "station_number": "78141",
+      "month": "2026-02",
+      "status": "done",
+      "date_done": "2026-02-03 16:05",
+      "to_type": null
+    },
+    {
+      "station_number": "78172",
+      "month": "2026-02",
+      "status": "done",
+      "date_done": "2026-02-03 12:46",
+      "to_type": null
+    },
+    {
+      "station_number": "78179",
+      "month": "2026-02",
+      "status": "done",
+      "date_done": "2026-02-02 14:38",
+      "to_type": null
+    },
+    {
+      "station_number": "47252",
+      "month": "2026-03",
+      "status": "done",
+      "date_done": "2026-03-13 19:13",
+      "to_type": null
+    },
+    {
+      "station_number": "47253",
+      "month": "2026-03",
+      "status": "done",
+      "date_done": "2026-03-13 19:13",
+      "to_type": null
+    },
+    {
+      "station_number": "47471",
+      "month": "2026-03",
+      "status": "done",
+      "date_done": "2026-03-23 06:33",
+      "to_type": null
+    },
+    {
+      "station_number": "47472",
+      "month": "2026-03",
+      "status": "done",
+      "date_done": "2026-03-20 10:54",
+      "to_type": null
+    },
+    {
+      "station_number": "53061",
+      "month": "2026-03",
+      "status": "done",
+      "date_done": "2026-03-06 16:47",
+      "to_type": null
+    },
+    {
+      "station_number": "53062",
+      "month": "2026-03",
+      "status": "done",
+      "date_done": "2026-03-23 06:32",
+      "to_type": null
+    },
+    {
+      "station_number": "53063",
+      "month": "2026-03",
+      "status": "done",
+      "date_done": "2026-03-22 13:21",
+      "to_type": null
+    },
+    {
+      "station_number": "53065",
+      "month": "2026-03",
+      "status": "done",
+      "date_done": "2026-03-14 15:25",
+      "to_type": null
+    },
+    {
+      "station_number": "53066",
+      "month": "2026-03",
+      "status": "done",
+      "date_done": "2026-03-22 08:00",
+      "to_type": null
+    },
+    {
+      "station_number": "53067",
+      "month": "2026-03",
+      "status": "done",
+      "date_done": "2026-03-13 19:12",
+      "to_type": null
+    },
+    {
+      "station_number": "53162",
+      "month": "2026-03",
+      "status": "done",
+      "date_done": "2026-03-23 06:33",
+      "to_type": null
+    },
+    {
+      "station_number": "53196",
+      "month": "2026-03",
+      "status": "done",
+      "date_done": "2026-03-06 16:48",
+      "to_type": null
+    },
+    {
+      "station_number": "53254",
+      "month": "2026-03",
+      "status": "done",
+      "date_done": "2026-03-14 15:24",
+      "to_type": null
+    },
+    {
+      "station_number": "53261",
+      "month": "2026-03",
+      "status": "done",
+      "date_done": "2026-03-23 06:32",
+      "to_type": null
+    },
+    {
+      "station_number": "53266",
+      "month": "2026-03",
+      "status": "done",
+      "date_done": "2026-03-22 07:59",
+      "to_type": null
+    },
+    {
+      "station_number": "53267",
+      "month": "2026-03",
+      "status": "done",
+      "date_done": "2026-03-22 07:58",
+      "to_type": null
+    },
+    {
+      "station_number": "47252",
+      "month": "2026-04",
+      "status": "done",
+      "date_done": "2026-04-14 16:11",
+      "to_type": null
+    },
+    {
+      "station_number": "47253",
+      "month": "2026-04",
+      "status": "done",
+      "date_done": "2026-04-14 16:11",
+      "to_type": null
+    },
+    {
+      "station_number": "47471",
+      "month": "2026-04",
+      "status": "done",
+      "date_done": "2026-04-14 20:41",
+      "to_type": null
+    },
+    {
+      "station_number": "53061",
+      "month": "2026-04",
+      "status": "done",
+      "date_done": "2026-04-24 11:33",
+      "to_type": null
+    },
+    {
+      "station_number": "53063",
+      "month": "2026-04",
+      "status": "done",
+      "date_done": "2026-04-24 10:44",
+      "to_type": null
+    },
+    {
+      "station_number": "53065",
+      "month": "2026-04",
+      "status": "done",
+      "date_done": "2026-04-16 13:01",
+      "to_type": null
+    },
+    {
+      "station_number": "53066",
+      "month": "2026-04",
+      "status": "done",
+      "date_done": "2026-04-23 17:59",
+      "to_type": null
+    },
+    {
+      "station_number": "53067",
+      "month": "2026-04",
+      "status": "done",
+      "date_done": "2026-04-14 20:41",
+      "to_type": null
+    },
+    {
+      "station_number": "53162",
+      "month": "2026-04",
+      "status": "done",
+      "date_done": "2026-04-24 09:32",
+      "to_type": null
+    },
+    {
+      "station_number": "53196",
+      "month": "2026-04",
+      "status": "done",
+      "date_done": "2026-04-23 18:00",
+      "to_type": null
+    },
+    {
+      "station_number": "53254",
+      "month": "2026-04",
+      "status": "done",
+      "date_done": "2026-04-14 20:39",
+      "to_type": null
+    },
+    {
+      "station_number": "53266",
+      "month": "2026-04",
+      "status": "done",
+      "date_done": "2026-04-15 11:53",
+      "to_type": null
+    },
+    {
+      "station_number": "53267",
+      "month": "2026-04",
+      "status": "done",
+      "date_done": "2026-04-23 18:35",
+      "to_type": null
+    },
+    {
+      "station_number": "78013",
+      "month": "2026-04",
+      "status": "done",
+      "date_done": "2026-04-09 11:02",
+      "to_type": null
+    },
+    {
+      "station_number": "78037",
+      "month": "2026-04",
+      "status": "done",
+      "date_done": "2026-04-08 16:26",
+      "to_type": null
+    },
+    {
+      "station_number": "78070",
+      "month": "2026-04",
+      "status": "done",
+      "date_done": "2026-04-08 16:16",
+      "to_type": null
+    },
+    {
+      "station_number": "78072",
+      "month": "2026-04",
+      "status": "done",
+      "date_done": "2026-04-07 15:01",
+      "to_type": null
+    },
+    {
+      "station_number": "78115",
+      "month": "2026-04",
+      "status": "done",
+      "date_done": "2026-04-08 17:44",
+      "to_type": null
+    },
+    {
+      "station_number": "78117",
+      "month": "2026-04",
+      "status": "done",
+      "date_done": "2026-04-08 16:16",
+      "to_type": null
+    },
+    {
+      "station_number": "78118",
+      "month": "2026-04",
+      "status": "done",
+      "date_done": "2026-04-23 17:59",
+      "to_type": null
+    },
+    {
+      "station_number": "78120",
+      "month": "2026-04",
+      "status": "done",
+      "date_done": "2026-04-09 17:20",
+      "to_type": null
+    },
+    {
+      "station_number": "78126",
+      "month": "2026-04",
+      "status": "done",
+      "date_done": "2026-04-08 16:48",
+      "to_type": null
+    },
+    {
+      "station_number": "78129",
+      "month": "2026-04",
+      "status": "done",
+      "date_done": "2026-04-07 16:58",
+      "to_type": null
+    },
+    {
+      "station_number": "78134",
+      "month": "2026-04",
+      "status": "done",
+      "date_done": "2026-04-07 15:01",
+      "to_type": null
+    },
+    {
+      "station_number": "78136",
+      "month": "2026-04",
+      "status": "done",
+      "date_done": "2026-04-09 17:20",
+      "to_type": null
+    },
+    {
+      "station_number": "78140",
+      "month": "2026-04",
+      "status": "done",
+      "date_done": "2026-04-07 11:13",
+      "to_type": null
+    },
+    {
+      "station_number": "78141",
+      "month": "2026-04",
+      "status": "done",
+      "date_done": "2026-04-17 10:17",
+      "to_type": null
+    },
+    {
+      "station_number": "78164",
+      "month": "2026-04",
+      "status": "done",
+      "date_done": "2026-04-17 11:18",
+      "to_type": null
+    },
+    {
+      "station_number": "78167",
+      "month": "2026-04",
+      "status": "done",
+      "date_done": "2026-04-17 10:17",
+      "to_type": null
+    },
+    {
+      "station_number": "78168",
+      "month": "2026-04",
+      "status": "done",
+      "date_done": "2026-04-23 17:59",
+      "to_type": null
+    },
+    {
+      "station_number": "78172",
+      "month": "2026-04",
+      "status": "done",
+      "date_done": "2026-04-07 16:58",
+      "to_type": null
+    },
+    {
+      "station_number": "78179",
+      "month": "2026-04",
+      "status": "done",
+      "date_done": "2026-04-08 16:16",
+      "to_type": null
+    },
+    {
+      "station_number": "47252",
+      "month": "2026-05",
+      "status": "done",
+      "date_done": "2026-05-26 22:26",
+      "to_type": null
+    },
+    {
+      "station_number": "47253",
+      "month": "2026-05",
+      "status": "done",
+      "date_done": "2026-05-26 22:28",
+      "to_type": null
+    },
+    {
+      "station_number": "47471",
+      "month": "2026-05",
+      "status": "done",
+      "date_done": "2026-05-19 19:41",
+      "to_type": null
+    },
+    {
+      "station_number": "53061",
+      "month": "2026-05",
+      "status": "done",
+      "date_done": "2026-05-18 14:29",
+      "to_type": null
+    },
+    {
+      "station_number": "53062",
+      "month": "2026-05",
+      "status": "done",
+      "date_done": "2026-05-19 19:35",
+      "to_type": null
+    },
+    {
+      "station_number": "53063",
+      "month": "2026-05",
+      "status": "done",
+      "date_done": "2026-05-19 19:35",
+      "to_type": null
+    },
+    {
+      "station_number": "53065",
+      "month": "2026-05",
+      "status": "done",
+      "date_done": "2026-05-26 22:31",
+      "to_type": null
+    },
+    {
+      "station_number": "53066",
+      "month": "2026-05",
+      "status": "done",
+      "date_done": "2026-05-26 22:23",
+      "to_type": null
+    },
+    {
+      "station_number": "53067",
+      "month": "2026-05",
+      "status": "done",
+      "date_done": "2026-05-26 22:28",
+      "to_type": null
+    },
+    {
+      "station_number": "53162",
+      "month": "2026-05",
+      "status": "done",
+      "date_done": "2026-05-19 19:47",
+      "to_type": null
+    },
+    {
+      "station_number": "53196",
+      "month": "2026-05",
+      "status": "done",
+      "date_done": "2026-05-19 19:42",
+      "to_type": null
+    },
+    {
+      "station_number": "53254",
+      "month": "2026-05",
+      "status": "done",
+      "date_done": "2026-05-26 22:29",
+      "to_type": null
+    },
+    {
+      "station_number": "53261",
+      "month": "2026-05",
+      "status": "done",
+      "date_done": "2026-05-19 19:35",
+      "to_type": null
+    },
+    {
+      "station_number": "53266",
+      "month": "2026-05",
+      "status": "done",
+      "date_done": "2026-05-26 22:31",
+      "to_type": null
+    },
+    {
+      "station_number": "53267",
+      "month": "2026-05",
+      "status": "done",
+      "date_done": "2026-05-26 22:30",
+      "to_type": null
+    },
+    {
+      "station_number": "78037",
+      "month": "2026-05",
+      "status": "done",
+      "date_done": "2026-05-11 11:58",
+      "to_type": null
+    },
+    {
+      "station_number": "78070",
+      "month": "2026-05",
+      "status": "done",
+      "date_done": "2026-05-11 13:11",
+      "to_type": null
+    },
+    {
+      "station_number": "78115",
+      "month": "2026-05",
+      "status": "done",
+      "date_done": "2026-05-11 11:54",
+      "to_type": null
+    },
+    {
+      "station_number": "78117",
+      "month": "2026-05",
+      "status": "done",
+      "date_done": "2026-05-11 15:12",
+      "to_type": null
+    },
+    {
+      "station_number": "78118",
+      "month": "2026-05",
+      "status": "done",
+      "date_done": "2026-05-16 12:28",
+      "to_type": null
+    },
+    {
+      "station_number": "78120",
+      "month": "2026-05",
+      "status": "done",
+      "date_done": "2026-05-27 12:19",
+      "to_type": null
+    },
+    {
+      "station_number": "78129",
+      "month": "2026-05",
+      "status": "done",
+      "date_done": "2026-05-16 13:49",
+      "to_type": null
+    },
+    {
+      "station_number": "78134",
+      "month": "2026-05",
+      "status": "done",
+      "date_done": "2026-05-16 11:23",
+      "to_type": null
+    },
+    {
+      "station_number": "78136",
+      "month": "2026-05",
+      "status": "done",
+      "date_done": "2026-05-27 12:18",
+      "to_type": null
+    },
+    {
+      "station_number": "78140",
+      "month": "2026-05",
+      "status": "done",
+      "date_done": "2026-05-08 12:06",
+      "to_type": null
+    },
+    {
+      "station_number": "78141",
+      "month": "2026-05",
+      "status": "done",
+      "date_done": "2026-05-08 10:22",
+      "to_type": null
+    },
+    {
+      "station_number": "78167",
+      "month": "2026-05",
+      "status": "done",
+      "date_done": "2026-05-16 13:49",
+      "to_type": null
+    },
+    {
+      "station_number": "78168",
+      "month": "2026-05",
+      "status": "done",
+      "date_done": "2026-05-11 11:55",
+      "to_type": null
+    },
+    {
+      "station_number": "78172",
+      "month": "2026-05",
+      "status": "done",
+      "date_done": "2026-05-16 13:22",
+      "to_type": null
+    },
+    {
+      "station_number": "78115",
+      "month": "2026-06",
+      "status": "done",
+      "date_done": "2026-06-02 14:23",
+      "to_type": null
+    },
+    {
+      "station_number": "78126",
+      "month": "2026-06",
+      "status": "done",
+      "date_done": "2026-06-02 19:41",
+      "to_type": null
+    },
+    {
+      "station_number": "78129",
+      "month": "2026-06",
+      "status": "done",
+      "date_done": "2026-06-02 14:22",
+      "to_type": null
+    }
+  ]
+}

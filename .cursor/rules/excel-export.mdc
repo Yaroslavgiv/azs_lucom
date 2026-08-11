@@ -1,0 +1,41 @@
+---
+description: Правила Excel-экспорта — package excel, схемы, имена файлов
+globs: lib/core/services/export_service.dart,lib/features/export/**/*.dart
+alwaysApply: false
+---
+
+# Excel-экспорт
+
+## Единственная точка генерации
+
+Вся логика xlsx — в `lib/core/services/export_service.dart`.
+UI только вызывает методы сервиса (`export_page.dart`).
+
+## Библиотека
+
+- Только `package:excel` + `share_plus` + temp file через `path_provider`
+- Не подключать Syncfusion, csv, openpyxl в Dart
+
+## Имена файлов (совместимость с ботом)
+
+| Метод | Файл |
+|-------|------|
+| `shareRequests` | `заявки.xlsx` |
+| `shareMaintenance` | `ТО.xlsx` |
+| `shareEquipment` | `оборудование.xlsx` |
+| `shareEquipmentOrders` | `заказ_оборудования_{Новгород\|Санкт-Петербург}.xlsx` |
+| `shareFreshEquipmentOrders` | `свежие_заказы_оборудования_{...}.xlsx` |
+
+## Паттерны билдеров
+
+- Плоская таблица → `_shareExcel`
+- Группы по станции → `_shareGroupedExcel` (title / subtitle / headers / rows)
+- Пустые данные → лист с колонкой `Сообщение`
+
+## Заказы оборудования
+
+- Фильтр: `request_type == requestTypeEquipmentOrder` + `status == open`
+- Полная выгрузка пишет `equipment_order_exports` + meta `equipment_orders_export_date_$region`
+- Свежие: `date_created > lastExportDate`
+
+Перед изменением схем читай skill `excel-export`.

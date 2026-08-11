@@ -1,0 +1,39 @@
+---
+description: Архитектура feature-first + Riverpod + repositories
+globs: lib/**/*.dart
+alwaysApply: false
+---
+
+# Архитектура lib/
+
+## Слои
+
+```
+UI (features) → providers → repositories/services → AppDatabase (sqflite)
+```
+
+- UI **не** пишет raw SQL и не держит `Database` напрямую
+- Новая фича: папка `lib/features/<name>/` + при необходимости repo/service в `core`
+- Providers: `FutureProvider` / `FutureProvider.family` / `StateProvider` в `app_providers.dart`
+- Навигация: `Navigator.push` + `AppPageRoute`, табы через `IndexedStack` в `MainShell`
+
+## Именование
+
+- файлы: `snake_case.dart`
+- классы: `PascalCase`
+- регионы в константах: `regionSpb`, `regionNovgorod`
+
+## Пример
+
+```dart
+// ✅
+final repo = await ref.read(requestRepositoryProvider.future);
+await repo.create(...);
+
+// ❌ не из WidgetState
+await db.rawInsert(...);
+```
+
+## Миграции DB
+
+Меняя схему — bump `version` в `AppDatabase` и добавь `onUpgrade`. Не ломай существующие таблицы без явной миграции.

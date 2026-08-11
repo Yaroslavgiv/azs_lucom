@@ -1,0 +1,17 @@
+---
+description: UI-тема glassmorphic и тексты на русском
+globs: lib/features/**/*.dart,lib/shared/**/*.dart,lib/core/theme/**/*.dart
+alwaysApply: false
+---
+
+# UI и тема
+
+- Тёмная Material 3 тема: `AppTheme`, цвета `AppColors`
+- Карточки/панели: `GlassCard`, фон `AppBackground`
+- Кнопки: существующие `AppPrimaryButton` / shared widgets
+- Навигация вниз: `AppBottomNav` (Карта / Станции / Экспорт)
+- Диалоги: `lib/shared/dialogs/`
+
+Пользовательские строки и snackbar — **на русском**.
+Не вводить светлую тему/чужой дизайн-язык без запроса.
+Не тащить Inter/Roboto как новый brand-font — проект уже на Material defaults + glass.

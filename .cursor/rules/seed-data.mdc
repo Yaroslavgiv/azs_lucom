@@ -1,0 +1,25 @@
+---
+description: Seed JSON assets и bump версий при обновлении данных
+globs: assets/**/*.json,lib/core/services/*seed*.dart,scripts/**/*
+alwaysApply: false
+---
+
+# Seed и пайплайн данных
+
+## Assets → seed-сервисы
+
+| Asset | Сервис | Meta version key |
+|-------|--------|------------------|
+| `stations_yandex.json` | `StationSeedService` | `stations_seed_version` |
+| `operational_data.json` | `OperationalDataSeedService` | `operational_data_version` |
+| `station_equipment.json` | `EquipmentSeedService` | `equipment_data_version` |
+
+При изменении содержимого JSON **обязательно** поднять `_seedVersion` / `_dataVersion` в соответствующем сервисе, иначе на уже установленных устройствах данные не обновятся.
+
+## Скрипты
+
+- `scripts/export_operational_data.py` — SQLite → JSON
+- `scripts/export_station_equipment.py` — DOCX → JSON
+- Вне mobile: импорт станций из `Распределение.xlsx` (бот/sibling)
+
+Не хардкодить абсолютные Windows-пути пользователя в новые скрипты — параметризуй CLI.

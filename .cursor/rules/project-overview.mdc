@@ -1,0 +1,33 @@
+---
+description: Контекст проекта azs_app — стек, структура, ограничения
+alwaysApply: true
+---
+
+# azs_app — базовый контекст
+
+Flutter-приложение учёта заявок и ТО по АЗС (СПб + Новгород). Package: `azs_app`.
+Offline-first: sqflite-кеш + синхронизация с Firebase (`my-home-chat-915a3`).
+
+## Стек
+
+- Riverpod + sqflite + Firebase (Auth + Firestore) + package `excel` + share_plus + ntk_map_view
+- Без go_router, без Syncfusion/CSV
+- Облачный backend — Firestore; локальный кеш — `azs_app.db`; seed JSON — fallback без сети
+
+## Структура
+
+- UI: `lib/features/<feature>/` (в т.ч. `auth`)
+- Данные: `lib/core/repositories/`, сервисы в `lib/core/services/` (`sync_service.dart`)
+- Тема/цвета: `lib/core/theme/`
+- Shared UI: `lib/shared/`
+
+## Обязательно
+
+- Отвечать пользователю по-русски
+- UI-строки — русский; код — английский
+- Регионы: `spb` / `novgorod`
+- Не трогать path-зависимость `ntk_map_view` без необходимости
+- Секреты DaData только из `.env`, не хардкодить
+- Firestore: UI не пишет напрямую — только через repositories → SyncService
+
+Подробности: `AGENTS.md`.

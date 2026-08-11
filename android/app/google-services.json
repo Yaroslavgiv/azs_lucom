@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "664415876236",
+    "project_id": "my-home-chat-915a3",
+    "storage_bucket": "my-home-chat-915a3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:664415876236:android:0cc4a9efe8dd23c214b7a9",
+        "android_client_info": {
+          "package_name": "com.azs.azs_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCgVWCsysFJepXRr6iX0voS5yNg7qaQdOE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:664415876236:android:ef2312dfc889071814b7a9",
+        "android_client_info": {
+          "package_name": "com.example.app_chat_gpt"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCgVWCsysFJepXRr6iX0voS5yNg7qaQdOE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
