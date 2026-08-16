@@ -10,7 +10,7 @@ class OperationalDataSeedService {
   OperationalDataSeedService(this._db);
 
   /// Увеличьте версию после обновления operational_data.json.
-  static const _dataVersion = '1';
+  static const _dataVersion = '2';
 
   final AppDatabase _db;
 

@@ -9,7 +9,7 @@ class EquipmentSeedService {
   EquipmentSeedService(this._db);
 
   /// Увеличьте версию после обновления station_equipment.json.
-  static const _dataVersion = '2';
+  static const _dataVersion = '3';
 
   final AppDatabase _db;
 

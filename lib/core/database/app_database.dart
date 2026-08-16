@@ -23,7 +23,7 @@ class AppDatabase {
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
           await db.execute('''
-            CREATE TABLE equipment_order_exports (
+            CREATE TABLE IF NOT EXISTS equipment_order_exports (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
               region TEXT NOT NULL,
               export_date TEXT NOT NULL,
@@ -34,7 +34,7 @@ class AppDatabase {
         }
         if (oldVersion < 3) {
           await db.execute('''
-            CREATE TABLE defect_acts (
+            CREATE TABLE IF NOT EXISTS defect_acts (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
               station_number TEXT NOT NULL,
               created_at TEXT NOT NULL,
@@ -49,7 +49,7 @@ class AppDatabase {
             )
           ''');
           await db.execute(
-            'CREATE INDEX idx_defect_acts_station_created ON defect_acts(station_number, created_at)',
+            'CREATE INDEX IF NOT EXISTS idx_defect_acts_station_created ON defect_acts(station_number, created_at)',
           );
         }
         if (oldVersion < 4) {

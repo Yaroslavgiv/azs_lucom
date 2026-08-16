@@ -268,6 +268,9 @@ class SyncService {
 
   Future<void> _pullMaintenance() async {
     final snap = await _fs.collection(entityMaintenance).get();
+    // Пустой cloud не должен затирать локальный seed/кеш.
+    if (snap.docs.isEmpty) return;
+
     await _db.db.delete('maintenance');
     await _db.db.delete(
       'sync_map',
@@ -303,6 +306,9 @@ class SyncService {
         buildRow,
   }) async {
     final snap = await _fs.collection(entity).get();
+    // Пустой cloud не должен затирать локальный seed/кеш.
+    if (snap.docs.isEmpty) return;
+
     await _db.db.delete(table);
     await _db.db.delete('sync_map', where: 'entity = ?', whereArgs: [entity]);
     for (final doc in snap.docs) {
@@ -312,54 +318,69 @@ class SyncService {
     }
   }
 
-  /// Upload local cache to Firestore when cloud is empty (one-shot seed).
+  Future<bool> _isCollectionEmpty(String entity) async {
+    final snap = await _fs.collection(entity).limit(1).get();
+    return snap.docs.isEmpty;
+  }
+
+  /// Upload local cache into any Firestore collections that are still empty.
   Future<bool> seedCloudIfEmpty() async {
     if (!await isOnline()) return false;
-    final existing = await _fs.collection(entityStations).limit(1).get();
-    if (existing.docs.isNotEmpty) return false;
 
-    final stations = await _db.db.query('stations');
-    for (final s in stations) {
-      final number = s['number'] as String;
-      await _fs.collection(entityStations).doc(number).set({
-        'name': s['name'] ?? '',
-        'address': s['address'] ?? '',
-        'lat': s['lat'],
-        'lon': s['lon'],
-        'region': s['region'] ?? '',
-        'geocode_status': s['geocode_status'] ?? 0,
-        'updated_at': FieldValue.serverTimestamp(),
-      });
-      await _putMap(entityStations, number, number);
+    var uploaded = false;
+
+    if (await _isCollectionEmpty(entityStations)) {
+      final stations = await _db.db.query('stations');
+      for (final s in stations) {
+        final number = s['number'] as String;
+        await _fs.collection(entityStations).doc(number).set({
+          'name': s['name'] ?? '',
+          'address': s['address'] ?? '',
+          'lat': s['lat'],
+          'lon': s['lon'],
+          'region': s['region'] ?? '',
+          'geocode_status': s['geocode_status'] ?? 0,
+          'updated_at': FieldValue.serverTimestamp(),
+        });
+        await _putMap(entityStations, number, number);
+      }
+      uploaded = stations.isNotEmpty || uploaded;
     }
 
-    final infos = await _db.db.query('station_info');
-    for (final row in infos) {
-      final sn = row['station_number'] as String;
-      await _fs.collection(entityStationInfo).doc(sn).set({
-        'manager_contact': row['manager_contact'] ?? '',
-        'updated_at': FieldValue.serverTimestamp(),
-      });
-      await _putMap(entityStationInfo, sn, sn);
+    if (await _isCollectionEmpty(entityStationInfo)) {
+      final infos = await _db.db.query('station_info');
+      for (final row in infos) {
+        final sn = row['station_number'] as String;
+        await _fs.collection(entityStationInfo).doc(sn).set({
+          'manager_contact': row['manager_contact'] ?? '',
+          'updated_at': FieldValue.serverTimestamp(),
+        });
+        await _putMap(entityStationInfo, sn, sn);
+      }
+      uploaded = infos.isNotEmpty || uploaded;
     }
 
-    final maint = await _db.db.query('maintenance');
-    for (final row in maint) {
-      final sn = row['station_number'] as String;
-      final month = row['month'] as String;
-      final id = '${sn}_$month';
-      await _fs.collection(entityMaintenance).doc(id).set({
-        'station_number': sn,
-        'month': month,
-        'status': row['status'] ?? 'pending',
-        'date_done': row['date_done'],
-        'to_type': row['to_type'],
-        'updated_at': FieldValue.serverTimestamp(),
-      });
-      await _putMap(entityMaintenance, id, id);
+    if (await _isCollectionEmpty(entityMaintenance)) {
+      final maint = await _db.db.query('maintenance');
+      for (final row in maint) {
+        final sn = row['station_number'] as String;
+        final month = row['month'] as String;
+        final id = '${sn}_$month';
+        await _fs.collection(entityMaintenance).doc(id).set({
+          'station_number': sn,
+          'month': month,
+          'status': row['status'] ?? 'pending',
+          'date_done': row['date_done'],
+          'to_type': row['to_type'],
+          'updated_at': FieldValue.serverTimestamp(),
+        });
+        await _putMap(entityMaintenance, id, id);
+      }
+      uploaded = maint.isNotEmpty || uploaded;
     }
 
-    Future<void> uploadMapped(String entity, String table) async {
+    Future<bool> uploadMappedIfEmpty(String entity, String table) async {
+      if (!await _isCollectionEmpty(entity)) return false;
       final rows = await _db.db.query(table);
       for (final row in rows) {
         final localId = '${row['id']}';
@@ -368,15 +389,28 @@ class SyncService {
         final doc = await _fs.collection(entity).add(data);
         await _putMap(entity, localId, doc.id);
       }
+      return rows.isNotEmpty;
     }
 
-    await uploadMapped(entityRequests, 'requests');
-    await uploadMapped(entityStationEquipment, 'station_equipment');
-    await uploadMapped(entityDefectActs, 'defect_acts');
-    await uploadMapped(entityEquipmentOrderExports, 'equipment_order_exports');
+    uploaded =
+        await uploadMappedIfEmpty(entityRequests, 'requests') || uploaded;
+    uploaded = await uploadMappedIfEmpty(
+          entityStationEquipment,
+          'station_equipment',
+        ) ||
+        uploaded;
+    uploaded =
+        await uploadMappedIfEmpty(entityDefectActs, 'defect_acts') || uploaded;
+    uploaded = await uploadMappedIfEmpty(
+          entityEquipmentOrderExports,
+          'equipment_order_exports',
+        ) ||
+        uploaded;
 
-    await _db.setMeta('cloud_seeded', '1');
-    return true;
+    if (uploaded) {
+      await _db.setMeta('cloud_seeded', '1');
+    }
+    return uploaded;
   }
 
   Future<Map<String, Object?>> requestPayload(int id) async {
