@@ -118,7 +118,11 @@ class SyncService {
             await _db.db.delete('sync_queue', where: 'id = ?', whereArgs: [id]);
           } catch (error, stackTrace) {
             // Keep item in queue; stop flush to avoid tight failure loop.
-            _logger.error('Failed to flush $entity/$localPk', error, stackTrace);
+            _logger.error(
+              'Failed to flush $entity/$localPk',
+              error,
+              stackTrace,
+            );
             return;
           }
         }

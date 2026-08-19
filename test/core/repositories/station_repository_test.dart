@@ -11,20 +11,10 @@ void main() {
     final repository = StationRepository(database);
 
     await repository.upsert(
-      Station(
-        number: '78010',
-        name: 'Вторая',
-        address: '',
-        region: 'spb',
-      ),
+      Station(number: '78010', name: 'Вторая', address: '', region: 'spb'),
     );
     await repository.upsert(
-      Station(
-        number: '78002',
-        name: 'Первая',
-        address: '',
-        region: 'spb',
-      ),
+      Station(number: '78002', name: 'Первая', address: '', region: 'spb'),
     );
     await repository.upsert(
       Station(
@@ -45,12 +35,7 @@ void main() {
     addTearDown(database.close);
     final repository = StationRepository(database);
     await repository.upsert(
-      Station(
-        number: '78001',
-        name: '',
-        address: '',
-        region: 'spb',
-      ),
+      Station(number: '78001', name: '', address: '', region: 'spb'),
     );
 
     await repository.updateGeocode(

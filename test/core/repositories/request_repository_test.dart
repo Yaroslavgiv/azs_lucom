@@ -9,14 +9,9 @@ void main() {
   test('creates, updates and closes a station request', () async {
     final database = await openTestDatabase();
     addTearDown(database.close);
-    await StationRepository(database).upsert(
-      Station(
-        number: '78001',
-        name: 'АЗС',
-        address: '',
-        region: 'spb',
-      ),
-    );
+    await StationRepository(
+      database,
+    ).upsert(Station(number: '78001', name: 'АЗС', address: '', region: 'spb'));
     final repository = RequestRepository(database);
 
     final id = await repository.add(
