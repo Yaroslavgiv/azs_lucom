@@ -1,12 +1,12 @@
 import '../database/app_database.dart';
 import '../models/request_item.dart';
-import '../services/sync_service.dart';
+import '../services/sync_change_publisher.dart';
 
 class RequestRepository {
-  RequestRepository(this._db, {SyncService? sync}) : _sync = sync;
+  RequestRepository(this._db, {SyncChangePublisher? sync}) : _sync = sync;
 
   final AppDatabase _db;
-  final SyncService? _sync;
+  final SyncChangePublisher? _sync;
 
   Future<List<RequestItem>> getOpenByStation(String stationNumber) async {
     final rows = await _db.db.query(
@@ -34,11 +34,9 @@ class RequestRepository {
     });
     final sync = _sync;
     if (sync != null) {
-      await sync.enqueue(
-        entity: SyncService.entityRequests,
+      await sync.publishUpsert(
+        entity: SyncEntity.requests,
         localPk: '$id',
-        op: 'upsert',
-        payload: await sync.requestPayload(id),
       );
     }
     return id;
@@ -53,11 +51,9 @@ class RequestRepository {
     );
     final sync = _sync;
     if (sync != null) {
-      await sync.enqueue(
-        entity: SyncService.entityRequests,
+      await sync.publishUpsert(
+        entity: SyncEntity.requests,
         localPk: '$id',
-        op: 'upsert',
-        payload: await sync.requestPayload(id),
       );
     }
   }
@@ -75,11 +71,9 @@ class RequestRepository {
     );
     final sync = _sync;
     if (sync != null) {
-      await sync.enqueue(
-        entity: SyncService.entityRequests,
+      await sync.publishUpsert(
+        entity: SyncEntity.requests,
         localPk: '$id',
-        op: 'upsert',
-        payload: await sync.requestPayload(id),
       );
     }
   }

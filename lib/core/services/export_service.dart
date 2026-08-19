@@ -6,13 +6,13 @@ import 'package:share_plus/share_plus.dart';
 
 import '../constants.dart';
 import '../database/app_database.dart';
-import 'sync_service.dart';
+import 'sync_change_publisher.dart';
 
 class ExportService {
-  ExportService(this._db, {SyncService? sync}) : _sync = sync;
+  ExportService(this._db, {SyncChangePublisher? sync}) : _sync = sync;
 
   final AppDatabase _db;
-  final SyncService? _sync;
+  final SyncChangePublisher? _sync;
 
   /// Pull from Firestore when online. Returns true if used cache only.
   Future<bool> ensureFreshData() async {
@@ -202,10 +202,9 @@ class ExportService {
         'request_id': row['id'],
       });
       if (sync != null) {
-        await sync.enqueue(
-          entity: SyncService.entityEquipmentOrderExports,
+        await sync.publishUpsertPayload(
+          entity: SyncEntity.equipmentOrderExports,
           localPk: '$id',
-          op: 'upsert',
           payload: {
             'region': region,
             'export_date': exportDate,

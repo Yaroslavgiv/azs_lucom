@@ -2,7 +2,7 @@ import 'package:sqflite/sqflite.dart';
 
 import '../database/app_database.dart';
 import '../models/station.dart';
-import '../services/sync_service.dart';
+import '../services/sync_change_publisher.dart';
 
 class StationMaintenanceItem {
   StationMaintenanceItem({required this.station, this.dateDone, this.toType});
@@ -23,10 +23,10 @@ class MaintenanceStatus {
 }
 
 class MaintenanceRepository {
-  MaintenanceRepository(this._db, {SyncService? sync}) : _sync = sync;
+  MaintenanceRepository(this._db, {SyncChangePublisher? sync}) : _sync = sync;
 
   final AppDatabase _db;
-  final SyncService? _sync;
+  final SyncChangePublisher? _sync;
 
   String _currentMonth() {
     final n = DateTime.now();
@@ -101,11 +101,9 @@ class MaintenanceRepository {
     final sync = _sync;
     if (sync != null) {
       final localPk = '${stationNumber}_$month';
-      await sync.enqueue(
-        entity: SyncService.entityMaintenance,
+      await sync.publishUpsert(
+        entity: SyncEntity.maintenance,
         localPk: localPk,
-        op: 'upsert',
-        payload: await sync.maintenancePayload(stationNumber, month),
       );
     }
   }

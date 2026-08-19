@@ -27,6 +27,11 @@ Repositories инкапсулируют чтение и запись предм�
 отвечает за Firestore и очередь синхронизации. Auth выделен в отдельный
 `AuthRepository`, поэтому Firebase-модели не протекают в presentation.
 
+Repositories публикуют локальные изменения через `SyncChangePublisher` и не
+зависят от реализации `SyncService`, Firestore SDK или устройства очереди.
+Это позволяет тестировать бизнес-операции с in-memory fake и заменять облачный
+transport без изменений в data layer.
+
 ## Offline-first invariant
 
 Локальная операция считается успешной после транзакции SQLite. Отправка в

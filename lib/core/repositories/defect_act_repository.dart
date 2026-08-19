@@ -1,12 +1,12 @@
 import '../database/app_database.dart';
 import '../models/defect_act.dart';
-import '../services/sync_service.dart';
+import '../services/sync_change_publisher.dart';
 
 class DefectActRepository {
-  DefectActRepository(this._db, {SyncService? sync}) : _sync = sync;
+  DefectActRepository(this._db, {SyncChangePublisher? sync}) : _sync = sync;
 
   final AppDatabase _db;
-  final SyncService? _sync;
+  final SyncChangePublisher? _sync;
 
   Future<List<DefectAct>> listByStation(String stationNumber) async {
     final rows = await _db.db.query(
@@ -52,11 +52,9 @@ class DefectActRepository {
     final id = await _db.db.insert('defect_acts', act.toInsertMap());
     final sync = _sync;
     if (sync != null) {
-      await sync.enqueue(
-        entity: SyncService.entityDefectActs,
+      await sync.publishUpsert(
+        entity: SyncEntity.defectActs,
         localPk: '$id',
-        op: 'upsert',
-        payload: await sync.defectActPayload(id),
       );
     }
     return id;
@@ -66,10 +64,9 @@ class DefectActRepository {
     await _db.db.delete('defect_acts', where: 'id = ?', whereArgs: [id]);
     final sync = _sync;
     if (sync != null) {
-      await sync.enqueue(
-        entity: SyncService.entityDefectActs,
+      await sync.publishDelete(
+        entity: SyncEntity.defectActs,
         localPk: '$id',
-        op: 'delete',
       );
     }
   }
@@ -86,11 +83,9 @@ class DefectActRepository {
     );
     final sync = _sync;
     if (sync != null) {
-      await sync.enqueue(
-        entity: SyncService.entityDefectActs,
+      await sync.publishUpsert(
+        entity: SyncEntity.defectActs,
         localPk: '$id',
-        op: 'upsert',
-        payload: await sync.defectActPayload(id),
       );
     }
   }
