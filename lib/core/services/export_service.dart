@@ -45,7 +45,14 @@ class ExportService {
     await _shareExcel(
       filename: 'заявки.xlsx',
       sheetName: 'Заявки',
-      headers: ['region', 'station_number', 'type', 'request_type', 'description', 'date_created'],
+      headers: [
+        'region',
+        'station_number',
+        'type',
+        'request_type',
+        'description',
+        'date_created',
+      ],
       rows: rows.isEmpty
           ? [
               {'Сообщение': 'Нет открытых заявок'},
@@ -57,7 +64,8 @@ class ExportService {
   Future<void> shareMaintenance() async {
     await ensureFreshData();
     final month = _currentMonth();
-    final rows = await _db.db.rawQuery('''
+    final rows = await _db.db.rawQuery(
+      '''
       SELECT s.region, s.number AS station_number, s.name, s.address,
         CASE WHEN m.status = 'done' THEN 'выполнено ' || m.month ELSE 'не выполнено' END AS status,
         m.date_done
@@ -65,12 +73,25 @@ class ExportService {
       LEFT JOIN maintenance m ON s.number = m.station_number AND m.month = ?
       WHERE s.region IN ('novgorod', 'spb')
       ORDER BY s.region, s.number
-    ''', [month]);
+    ''',
+      [month],
+    );
     await _shareExcel(
       filename: 'ТО.xlsx',
       sheetName: 'ТО',
-      headers: ['region', 'station_number', 'name', 'address', 'status', 'date_done'],
-      rows: rows.isEmpty ? [{'Сообщение': 'Нет данных по ТО'}] : rows,
+      headers: [
+        'region',
+        'station_number',
+        'name',
+        'address',
+        'status',
+        'date_done',
+      ],
+      rows: rows.isEmpty
+          ? [
+              {'Сообщение': 'Нет данных по ТО'},
+            ]
+          : rows,
     );
   }
 
@@ -121,7 +142,9 @@ class ExportService {
   /// Свежие заявки с заказом оборудования с даты последней выгрузки.
   Future<void> shareFreshEquipmentOrders(String region) async {
     await ensureFreshData();
-    final lastExportDate = await _db.getMeta(equipmentOrdersExportDateMetaKey(region));
+    final lastExportDate = await _db.getMeta(
+      equipmentOrdersExportDateMetaKey(region),
+    );
     final rows = await _queryEquipmentOrderRequests(
       region,
       sinceDate: lastExportDate,
@@ -205,7 +228,8 @@ class ExportService {
         currentStation = stationKey;
         currentGroup = _ExportGroup(
           title: '№ ${row['station_number']} — ${row['name']}',
-          subtitle: '${_regionLabel(row['region'] as String?)}, ${row['address']}',
+          subtitle:
+              '${_regionLabel(row['region'] as String?)}, ${row['address']}',
         );
         groups.add(currentGroup);
       }
@@ -264,7 +288,9 @@ class ExportService {
         filename: filename,
         sheetName: sheetName,
         headers: ['Сообщение'],
-        rows: [{'Сообщение': emptyMessage}],
+        rows: [
+          {'Сообщение': emptyMessage},
+        ],
       );
       return;
     }
@@ -278,7 +304,9 @@ class ExportService {
     if (subtitle != null) {
       sheet
           .cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
-          .value = TextCellValue(subtitle);
+          .value = TextCellValue(
+        subtitle,
+      );
       rowIndex++;
       rowIndex++;
     }
@@ -287,18 +315,28 @@ class ExportService {
       final group = groups[g];
       sheet
           .cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
-          .value = TextCellValue(group.title);
+          .value = TextCellValue(
+        group.title,
+      );
       if (group.subtitle.isNotEmpty) {
         sheet
-            .cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex))
-            .value = TextCellValue(group.subtitle);
+            .cell(
+              CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex),
+            )
+            .value = TextCellValue(
+          group.subtitle,
+        );
       }
       rowIndex++;
 
       for (var c = 0; c < headers.length; c++) {
         sheet
-            .cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: rowIndex))
-            .value = TextCellValue(headers[c]);
+            .cell(
+              CellIndex.indexByColumnRow(columnIndex: c, rowIndex: rowIndex),
+            )
+            .value = TextCellValue(
+          headers[c],
+        );
       }
       rowIndex++;
 
@@ -306,8 +344,12 @@ class ExportService {
         for (var c = 0; c < headers.length; c++) {
           final v = item[headers[c]];
           sheet
-              .cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: rowIndex))
-              .value = TextCellValue(v?.toString() ?? '');
+              .cell(
+                CellIndex.indexByColumnRow(columnIndex: c, rowIndex: rowIndex),
+              )
+              .value = TextCellValue(
+            v?.toString() ?? '',
+          );
         }
         rowIndex++;
       }
@@ -331,15 +373,21 @@ class ExportService {
 
     final keys = rows.first.keys.toList();
     for (var c = 0; c < keys.length; c++) {
-      sheet.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 0)).value =
-          TextCellValue(keys[c].toString());
+      sheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 0))
+          .value = TextCellValue(
+        keys[c].toString(),
+      );
     }
     for (var r = 0; r < rows.length; r++) {
       final row = rows[r];
       for (var c = 0; c < keys.length; c++) {
         final v = row[keys[c]];
-        sheet.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: r + 1)).value =
-            TextCellValue(v?.toString() ?? '');
+        sheet
+            .cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: r + 1))
+            .value = TextCellValue(
+          v?.toString() ?? '',
+        );
       }
     }
 

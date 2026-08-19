@@ -17,9 +17,8 @@ Future<void> showStationMarkerDialog(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (ctx) => WebViewAware(
-      child: _StationBottomSheet(station: station),
-    ),
+    builder: (ctx) =>
+        WebViewAware(child: _StationBottomSheet(station: station)),
   );
 }
 

@@ -16,14 +16,19 @@ import '../../shared/widgets/app_buttons.dart';
 import '../../shared/widgets/glass_card.dart';
 import 'defect_act_template.dart';
 
-final _defectActsProvider =
-    FutureProvider.family<List<DefectAct>, String>((ref, stationNumber) async {
+final _defectActsProvider = FutureProvider.family<List<DefectAct>, String>((
+  ref,
+  stationNumber,
+) async {
   await ref.watch(appInitProvider.future);
   final repo = await ref.watch(defectActRepositoryProvider.future);
   return repo.listByStation(stationNumber);
 });
 
-final _stationProvider = FutureProvider.family<Station?, String>((ref, number) async {
+final _stationProvider = FutureProvider.family<Station?, String>((
+  ref,
+  number,
+) async {
   await ref.watch(appInitProvider.future);
   final repo = await ref.watch(stationRepositoryProvider.future);
   return repo.getByNumber(number);
@@ -48,9 +53,13 @@ class DefectActsPage extends ConsumerWidget {
             IconButton(
               tooltip: 'Выгрузить все акты',
               onPressed: () async {
-                final station = await ref.read(_stationProvider(stationNumber).future);
+                final station = await ref.read(
+                  _stationProvider(stationNumber).future,
+                );
                 if (station == null) return;
-                final acts = await ref.read(_defectActsProvider(stationNumber).future);
+                final acts = await ref.read(
+                  _defectActsProvider(stationNumber).future,
+                );
                 if (!context.mounted) return;
                 await _shareActs(context, station: station, acts: acts);
               },
@@ -64,15 +73,15 @@ class DefectActsPage extends ConsumerWidget {
               return const Center(child: Text('Станция не найдена'));
             }
             return actsAsync.when(
-              data: (acts) => _Body(
-                station: station,
-                acts: acts,
-              ),
+              data: (acts) => _Body(station: station, acts: acts),
               loading: () => const Center(
                 child: CircularProgressIndicator(color: AppColors.accent),
               ),
               error: (e, _) => Center(
-                child: Text('Ошибка: $e', style: const TextStyle(color: AppColors.error)),
+                child: Text(
+                  'Ошибка: $e',
+                  style: const TextStyle(color: AppColors.error),
+                ),
               ),
             );
           },
@@ -159,9 +168,13 @@ class _Body extends ConsumerWidget {
                             onPressed: () async {
                               final ok = await _confirmDelete(context);
                               if (!ok) return;
-                              final repo = await ref.read(defectActRepositoryProvider.future);
+                              final repo = await ref.read(
+                                defectActRepositoryProvider.future,
+                              );
                               await repo.deleteById(a.id);
-                              ref.invalidate(_defectActsProvider(station.number));
+                              ref.invalidate(
+                                _defectActsProvider(station.number),
+                              );
                             },
                           ),
                         ),
@@ -207,17 +220,18 @@ Future<void> _shareSingleAct(
     final txtName = 'акт_дефектации_${station.number}_${act.id}.txt';
     final txtFile = File('${dir.path}/$txtName');
     await txtFile.writeAsString(
-      act.renderedText.isNotEmpty ? act.renderedText : _fallbackText(act, station),
+      act.renderedText.isNotEmpty
+          ? act.renderedText
+          : _fallbackText(act, station),
       flush: true,
     );
     toShare = XFile(txtFile.path);
   }
 
   if (!context.mounted) return;
-  await Share.shareXFiles(
-    [toShare],
-    text: 'Акт дефектации №${act.id} — АЗС №${station.number}',
-  );
+  await Share.shareXFiles([
+    toShare,
+  ], text: 'Акт дефектации №${act.id} — АЗС №${station.number}');
 }
 
 Future<void> _createActFlow(
@@ -229,8 +243,10 @@ Future<void> _createActFlow(
   final equipment = await equipmentRepo.listForStation(station.number);
   if (!context.mounted) return;
 
-  final equipmentChoice =
-      await _askEquipmentName(context, equipment: equipment);
+  final equipmentChoice = await _askEquipmentName(
+    context,
+    equipment: equipment,
+  );
   if (equipmentChoice == null) return;
   if (!context.mounted) return;
 
@@ -274,9 +290,9 @@ Future<void> _createActFlow(
 
   ref.invalidate(_defectActsProvider(station.number));
   if (context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Акт сохранён')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Акт сохранён')));
   }
 }
 
@@ -287,9 +303,9 @@ Future<void> _shareActs(
 }) async {
   if (acts.isEmpty) {
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Актов нет')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Актов нет')));
     return;
   }
 
@@ -367,7 +383,9 @@ void _showActPreview(BuildContext context, DefectAct act) {
       content: SizedBox(
         width: double.maxFinite,
         child: SingleChildScrollView(
-          child: SelectableText(act.renderedText.isNotEmpty ? act.renderedText : 'Нет текста'),
+          child: SelectableText(
+            act.renderedText.isNotEmpty ? act.renderedText : 'Нет текста',
+          ),
         ),
       ),
       actions: [
@@ -453,8 +471,14 @@ Future<_EquipmentChoice?> _askEquipmentName(
                         contentPadding: EdgeInsets.zero,
                         title: Text(name),
                         trailing: isSelected
-                            ? const Icon(Icons.check_circle, color: AppColors.accent)
-                            : const Icon(Icons.circle_outlined, color: AppColors.textSecondary),
+                            ? const Icon(
+                                Icons.check_circle,
+                                color: AppColors.accent,
+                              )
+                            : const Icon(
+                                Icons.circle_outlined,
+                                color: AppColors.textSecondary,
+                              ),
                         onTap: () {
                           setState(() {
                             selected = choice;
@@ -496,7 +520,9 @@ class _EquipmentChoice {
 
   @override
   bool operator ==(Object other) =>
-      other is _EquipmentChoice && other.name == name && other.category == category;
+      other is _EquipmentChoice &&
+      other.name == name &&
+      other.category == category;
 
   @override
   int get hashCode => Object.hash(name, category);
@@ -567,8 +593,8 @@ class _DefectActWizardDialogState extends State<_DefectActWizardDialog> {
           onPressed: step == 0
               ? null
               : () => setState(() {
-                    step -= 1;
-                  }),
+                  step -= 1;
+                }),
           child: const Text('Назад'),
         ),
         TextButton(
@@ -668,17 +694,17 @@ class _KeyboardSafeFormSheet extends StatelessWidget {
                     Text(
                       fieldLabel,
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            color: AppColors.accent,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        color: AppColors.accent,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     if (subtitle != null) ...[
                       const SizedBox(height: 4),
                       Text(
                         subtitle!,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ],
                     const SizedBox(height: 12),
@@ -699,4 +725,3 @@ class _KeyboardSafeFormSheet extends StatelessWidget {
     );
   }
 }
-

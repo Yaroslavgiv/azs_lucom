@@ -5,16 +5,22 @@ import '../../core/constants.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/repositories/station_info_repository.dart';
 
-final _managerProvider = FutureProvider.family<String, String>((ref, station) async {
+final _managerProvider = FutureProvider.family<String, String>((
+  ref,
+  station,
+) async {
   final repo = await ref.watch(stationInfoRepositoryProvider.future);
   return repo.getManagerContact(station);
 });
 
 final _equipmentProvider =
-    FutureProvider.family<List<EquipmentItem>, ({String station, String category})>((ref, p) async {
-  final repo = await ref.watch(stationInfoRepositoryProvider.future);
-  return repo.getEquipment(p.station, p.category);
-});
+    FutureProvider.family<
+      List<EquipmentItem>,
+      ({String station, String category})
+    >((ref, p) async {
+      final repo = await ref.watch(stationInfoRepositoryProvider.future);
+      return repo.getEquipment(p.station, p.category);
+    });
 
 class StationInfoPage extends ConsumerStatefulWidget {
   const StationInfoPage({super.key, required this.stationNumber});
@@ -37,12 +43,15 @@ class _StationInfoPageState extends ConsumerState<StationInfoPage> {
 
   Future<void> _saveContact() async {
     final repo = await ref.read(stationInfoRepositoryProvider.future);
-    await repo.setManagerContact(widget.stationNumber, _contactController.text.trim());
+    await repo.setManagerContact(
+      widget.stationNumber,
+      _contactController.text.trim(),
+    );
     ref.invalidate(_managerProvider(widget.stationNumber));
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Контакт сохранён')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Контакт сохранён')));
     }
   }
 
@@ -59,7 +68,10 @@ class _StationInfoPageState extends ConsumerState<StationInfoPage> {
             maxLines: 3,
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Отмена'),
+            ),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, c.text.trim()),
               child: const Text('Добавить'),
@@ -75,7 +87,9 @@ class _StationInfoPageState extends ConsumerState<StationInfoPage> {
       category: category,
       description: desc,
     );
-    ref.invalidate(_equipmentProvider((station: widget.stationNumber, category: category)));
+    ref.invalidate(
+      _equipmentProvider((station: widget.stationNumber, category: category)),
+    );
   }
 
   @override
@@ -102,13 +116,18 @@ class _StationInfoPageState extends ConsumerState<StationInfoPage> {
             ),
           ),
           const SizedBox(height: 8),
-          FilledButton(onPressed: _saveContact, child: const Text('Сохранить контакт')),
+          FilledButton(
+            onPressed: _saveContact,
+            child: const Text('Сохранить контакт'),
+          ),
           const SizedBox(height: 24),
-          ...equipmentCategories.map((cat) => _EquipmentSection(
-                stationNumber: widget.stationNumber,
-                category: cat,
-                onAdd: () => _addEquipment(cat),
-              )),
+          ...equipmentCategories.map(
+            (cat) => _EquipmentSection(
+              stationNumber: widget.stationNumber,
+              category: cat,
+              onAdd: () => _addEquipment(cat),
+            ),
+          ),
         ],
       ),
     );
@@ -128,7 +147,9 @@ class _EquipmentSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(_equipmentProvider((station: stationNumber, category: category)));
+    final async = ref.watch(
+      _equipmentProvider((station: stationNumber, category: category)),
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -153,10 +174,15 @@ class _EquipmentSection extends ConsumerWidget {
                           trailing: IconButton(
                             icon: const Icon(Icons.delete_outline),
                             onPressed: () async {
-                              final repo = await ref.read(stationInfoRepositoryProvider.future);
+                              final repo = await ref.read(
+                                stationInfoRepositoryProvider.future,
+                              );
                               await repo.deleteEquipment(e.id);
                               ref.invalidate(
-                                _equipmentProvider((station: stationNumber, category: category)),
+                                _equipmentProvider((
+                                  station: stationNumber,
+                                  category: category,
+                                )),
                               );
                             },
                           ),

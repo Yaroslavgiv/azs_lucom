@@ -17,11 +17,11 @@ class EquipmentItem {
   final String description;
 
   factory EquipmentItem.fromMap(Map<String, Object?> m) => EquipmentItem(
-        id: m['id'] as int,
-        stationNumber: m['station_number'] as String,
-        category: m['category'] as String,
-        description: (m['description'] as String?) ?? '',
-      );
+    id: m['id'] as int,
+    stationNumber: m['station_number'] as String,
+    category: m['category'] as String,
+    description: (m['description'] as String?) ?? '',
+  );
 }
 
 class StationInfoRepository {
@@ -42,11 +42,10 @@ class StationInfoRepository {
   }
 
   Future<void> setManagerContact(String stationNumber, String contact) async {
-    await _db.db.insert(
-      'station_info',
-      {'station_number': stationNumber, 'manager_contact': contact},
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await _db.db.insert('station_info', {
+      'station_number': stationNumber,
+      'manager_contact': contact,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
     final sync = _sync;
     if (sync != null) {
       await sync.enqueue(
@@ -58,7 +57,10 @@ class StationInfoRepository {
     }
   }
 
-  Future<List<EquipmentItem>> getEquipment(String stationNumber, String category) async {
+  Future<List<EquipmentItem>> getEquipment(
+    String stationNumber,
+    String category,
+  ) async {
     final rows = await _db.db.query(
       'station_equipment',
       where: 'station_number = ? AND category = ?',

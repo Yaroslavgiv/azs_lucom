@@ -31,36 +31,48 @@ final authStateProvider = StreamProvider<User?>((ref) {
 
 final syncStatusProvider = StateProvider<SyncStatus>((ref) => SyncStatus.idle);
 
-final stationRepositoryProvider = FutureProvider<StationRepository>((ref) async {
+final stationRepositoryProvider = FutureProvider<StationRepository>((
+  ref,
+) async {
   final db = await ref.watch(databaseProvider.future);
   final sync = await ref.watch(syncServiceProvider.future);
   return StationRepository(db, sync: sync);
 });
 
-final requestRepositoryProvider = FutureProvider<RequestRepository>((ref) async {
+final requestRepositoryProvider = FutureProvider<RequestRepository>((
+  ref,
+) async {
   final db = await ref.watch(databaseProvider.future);
   final sync = await ref.watch(syncServiceProvider.future);
   return RequestRepository(db, sync: sync);
 });
 
-final maintenanceRepositoryProvider = FutureProvider<MaintenanceRepository>((ref) async {
+final maintenanceRepositoryProvider = FutureProvider<MaintenanceRepository>((
+  ref,
+) async {
   final db = await ref.watch(databaseProvider.future);
   final sync = await ref.watch(syncServiceProvider.future);
   return MaintenanceRepository(db, sync: sync);
 });
 
-final stationInfoRepositoryProvider = FutureProvider<StationInfoRepository>((ref) async {
+final stationInfoRepositoryProvider = FutureProvider<StationInfoRepository>((
+  ref,
+) async {
   final db = await ref.watch(databaseProvider.future);
   final sync = await ref.watch(syncServiceProvider.future);
   return StationInfoRepository(db, sync: sync);
 });
 
-final equipmentRepositoryProvider = FutureProvider<EquipmentRepository>((ref) async {
+final equipmentRepositoryProvider = FutureProvider<EquipmentRepository>((
+  ref,
+) async {
   final db = await ref.watch(databaseProvider.future);
   return EquipmentRepository(db);
 });
 
-final defectActRepositoryProvider = FutureProvider<DefectActRepository>((ref) async {
+final defectActRepositoryProvider = FutureProvider<DefectActRepository>((
+  ref,
+) async {
   final db = await ref.watch(databaseProvider.future);
   final sync = await ref.watch(syncServiceProvider.future);
   return DefectActRepository(db, sync: sync);
@@ -101,8 +113,10 @@ final appInitProvider = FutureProvider<void>((ref) async {
   }
 });
 
-final stationsByRegionProvider =
-    FutureProvider.family<List<Station>, String>((ref, region) async {
+final stationsByRegionProvider = FutureProvider.family<List<Station>, String>((
+  ref,
+  region,
+) async {
   await ref.watch(appInitProvider.future);
   final repo = await ref.watch(stationRepositoryProvider.future);
   return repo.getByRegion(region);
@@ -125,13 +139,14 @@ class MaintenanceListFilter {
 }
 
 final maintenanceListProvider =
-    FutureProvider.family<List<StationMaintenanceItem>, MaintenanceListFilter>(
-  (ref, filter) async {
-    await ref.watch(appInitProvider.future);
-    final repo = await ref.watch(maintenanceRepositoryProvider.future);
-    return repo.getStationsByRegion(region: filter.region, done: filter.done);
-  },
-);
+    FutureProvider.family<List<StationMaintenanceItem>, MaintenanceListFilter>((
+      ref,
+      filter,
+    ) async {
+      await ref.watch(appInitProvider.future);
+      final repo = await ref.watch(maintenanceRepositoryProvider.future);
+      return repo.getStationsByRegion(region: filter.region, done: filter.done);
+    });
 
 Future<SyncStatus> runManualSync(WidgetRef ref) async {
   ref.read(syncStatusProvider.notifier).state = SyncStatus.syncing;

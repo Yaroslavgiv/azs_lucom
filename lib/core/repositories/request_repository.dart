@@ -69,11 +69,7 @@ class RequestRepository {
         '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
     await _db.db.update(
       'requests',
-      {
-        'status': 'closed',
-        'close_comment': comment,
-        'close_date': closeDate,
-      },
+      {'status': 'closed', 'close_comment': comment, 'close_date': closeDate},
       where: 'id = ?',
       whereArgs: [id],
     );

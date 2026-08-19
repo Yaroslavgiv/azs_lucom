@@ -274,59 +274,64 @@ class _MapPageState extends ConsumerState<MapPage> {
   }
 
   List<Marker> _buildMarkers() {
-    return _stationsForRegion(_focusedRegion).map((station) {
-      final point = LatLng(station.lat!, station.lon!);
-      final markerTitle = station.name.isNotEmpty
-          ? '${station.name} (№${station.number})'
-          : '№${station.number}';
+    return _stationsForRegion(_focusedRegion)
+        .map((station) {
+          final point = LatLng(station.lat!, station.lon!);
+          final markerTitle = station.name.isNotEmpty
+              ? '${station.name} (№${station.number})'
+              : '№${station.number}';
 
-      return Marker(
-        point: point,
-        width: 150,
-        height: 68,
-        alignment: Alignment.bottomCenter,
-        child: Semantics(
-          button: true,
-          label: markerTitle,
-          child: GestureDetector(
-            onTap: () => showStationMarkerDialog(context, station: station),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.72),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
+          return Marker(
+            point: point,
+            width: 150,
+            height: 68,
+            alignment: Alignment.bottomCenter,
+            child: Semantics(
+              button: true,
+              label: markerTitle,
+              child: GestureDetector(
+                onTap: () => showStationMarkerDialog(context, station: station),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.72),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        child: Text(
+                          markerTitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
                     ),
-                    child: Text(
-                      markerTitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.white, fontSize: 10),
+                    Image.network(
+                      _markerIconUrl(station),
+                      width: 30,
+                      height: 40,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.location_on,
+                        size: 40,
+                        color: AppColors.accent,
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-                Image.network(
-                  _markerIconUrl(station),
-                  width: 30,
-                  height: 40,
-                  errorBuilder: (_, __, ___) => const Icon(
-                    Icons.location_on,
-                    size: 40,
-                    color: AppColors.accent,
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-        ),
-      );
-    }).toList(growable: false);
+          );
+        })
+        .toList(growable: false);
   }
 
   String _markerIconUrl(Station station) {

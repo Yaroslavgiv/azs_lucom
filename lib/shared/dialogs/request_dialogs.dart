@@ -7,18 +7,23 @@ import '../../core/providers/app_providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../widgets/app_buttons.dart';
 
-final _stationRefreshProvider = StateProvider.family<int, String>((ref, _) => 0);
+final _stationRefreshProvider = StateProvider.family<int, String>(
+  (ref, _) => 0,
+);
 
 void refreshStationRequests(WidgetRef ref, String stationNumber) {
   ref.read(_stationRefreshProvider(stationNumber).notifier).state++;
 }
 
 final stationRequestsProvider =
-    FutureProvider.family<List<RequestItem>, String>((ref, stationNumber) async {
-  ref.watch(_stationRefreshProvider(stationNumber));
-  final repo = await ref.watch(requestRepositoryProvider.future);
-  return repo.getOpenByStation(stationNumber);
-});
+    FutureProvider.family<List<RequestItem>, String>((
+      ref,
+      stationNumber,
+    ) async {
+      ref.watch(_stationRefreshProvider(stationNumber));
+      final repo = await ref.watch(requestRepositoryProvider.future);
+      return repo.getOpenByStation(stationNumber);
+    });
 
 Future<void> showNewRequestDialog(
   BuildContext context,
@@ -46,9 +51,7 @@ class _NewRequestDialogState extends ConsumerState<_NewRequestDialog> {
   bool _saving = false;
 
   bool get _canSave =>
-      !_saving &&
-      _category != null &&
-      _descController.text.trim().isNotEmpty;
+      !_saving && _category != null && _descController.text.trim().isNotEmpty;
 
   @override
   void initState() {
@@ -94,10 +97,7 @@ class _NewRequestDialogState extends ConsumerState<_NewRequestDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              'Категория',
-              style: Theme.of(context).textTheme.labelLarge,
-            ),
+            Text('Категория', style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 8),
             ...requestCategories.map(
               (c) => Padding(
@@ -124,9 +124,7 @@ class _NewRequestDialogState extends ConsumerState<_NewRequestDialog> {
             const SizedBox(height: 12),
             TextField(
               controller: _descController,
-              decoration: const InputDecoration(
-                labelText: 'Описание',
-              ),
+              decoration: const InputDecoration(labelText: 'Описание'),
               maxLines: 3,
               textInputAction: TextInputAction.newline,
             ),
@@ -170,9 +168,7 @@ Future<void> showEditRequestDialog(
       title: Text(item.requestType),
       content: TextField(
         controller: descController,
-        decoration: const InputDecoration(
-          labelText: 'Корректировка заявки',
-        ),
+        decoration: const InputDecoration(labelText: 'Корректировка заявки'),
         maxLines: 4,
       ),
       actions: [
@@ -184,7 +180,10 @@ Future<void> showEditRequestDialog(
                 title: const Text('Удалить заявку?'),
                 content: const Text('Заявка будет закрыта.'),
                 actions: [
-                  TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Отмена')),
+                  TextButton(
+                    onPressed: () => Navigator.pop(c, false),
+                    child: const Text('Отмена'),
+                  ),
                   FilledButton(
                     onPressed: () => Navigator.pop(c, true),
                     child: const Text('Удалить'),
@@ -199,9 +198,15 @@ Future<void> showEditRequestDialog(
               if (ctx.mounted) Navigator.pop(ctx);
             }
           },
-          child: const Text('Удалить заявку', style: TextStyle(color: Colors.red)),
+          child: const Text(
+            'Удалить заявку',
+            style: TextStyle(color: Colors.red),
+          ),
         ),
-        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('Отмена'),
+        ),
         FilledButton(
           onPressed: () async {
             final repo = await ref.read(requestRepositoryProvider.future);

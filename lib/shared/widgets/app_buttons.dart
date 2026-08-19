@@ -74,7 +74,9 @@ class _AppPrimaryButtonState extends State<AppPrimaryButton> {
       onTapUp: enabled ? (_) => setState(() => _pressed = false) : null,
       onTapCancel: enabled ? () => setState(() => _pressed = false) : null,
       onTap: enabled ? widget.onPressed : null,
-      child: widget.expand ? SizedBox(width: double.infinity, child: child) : child,
+      child: widget.expand
+          ? SizedBox(width: double.infinity, child: child)
+          : child,
     );
   }
 }
@@ -120,7 +122,9 @@ class _AppSecondaryButtonState extends State<AppSecondaryButton> {
               : AppColors.surface.withValues(alpha: 0.6),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: enabled ? AppColors.border : AppColors.border.withValues(alpha: 0.4),
+            color: enabled
+                ? AppColors.border
+                : AppColors.border.withValues(alpha: 0.4),
           ),
         ),
         child: _ButtonLabelRow(
@@ -142,7 +146,9 @@ class _AppSecondaryButtonState extends State<AppSecondaryButton> {
       onTapUp: enabled ? (_) => setState(() => _pressed = false) : null,
       onTapCancel: enabled ? () => setState(() => _pressed = false) : null,
       onTap: enabled ? widget.onPressed : null,
-      child: widget.expand ? SizedBox(width: double.infinity, child: child) : child,
+      child: widget.expand
+          ? SizedBox(width: double.infinity, child: child)
+          : child,
     );
   }
 }

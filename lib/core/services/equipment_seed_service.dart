@@ -17,10 +17,12 @@ class EquipmentSeedService {
     final currentVersion = await _db.getMeta('equipment_data_version');
     if (currentVersion == _dataVersion) return;
 
-    final jsonStr = await rootBundle.loadString('assets/station_equipment.json');
+    final jsonStr = await rootBundle.loadString(
+      'assets/station_equipment.json',
+    );
     final data = json.decode(jsonStr) as Map<String, dynamic>;
-    final stationNumbers =
-        (data['station_numbers'] as List<dynamic>).cast<String>();
+    final stationNumbers = (data['station_numbers'] as List<dynamic>)
+        .cast<String>();
     final equipment = data['equipment'] as List<dynamic>? ?? [];
 
     final categories = <String>{

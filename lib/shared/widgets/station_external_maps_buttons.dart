@@ -22,9 +22,9 @@ class StationExternalMapsButtons extends StatelessWidget {
     final ok = await launch();
     if (!context.mounted) return;
     if (!ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Не удалось открыть карты')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Не удалось открыть карты')));
     }
   }
 

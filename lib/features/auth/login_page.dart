@@ -113,8 +113,8 @@ class _LoginPageState extends State<LoginPage> {
                             ? 'Создайте аккаунт для синхронизации с облаком.'
                             : 'Войдите, чтобы синхронизировать данные с облаком.',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                       const SizedBox(height: 20),
                       TextField(
@@ -136,7 +136,8 @@ class _LoginPageState extends State<LoginPage> {
                           labelText: 'Пароль',
                           prefixIcon: const Icon(Icons.lock_outline),
                           suffixIcon: IconButton(
-                            onPressed: () => setState(() => _obscure = !_obscure),
+                            onPressed: () =>
+                                setState(() => _obscure = !_obscure),
                             icon: Icon(
                               _obscure
                                   ? Icons.visibility_outlined
@@ -155,12 +156,16 @@ class _LoginPageState extends State<LoginPage> {
                       const SizedBox(height: 20),
                       if (_busy)
                         const Center(
-                          child: CircularProgressIndicator(color: AppColors.accent),
+                          child: CircularProgressIndicator(
+                            color: AppColors.accent,
+                          ),
                         )
                       else ...[
                         AppPrimaryButton(
                           label: _isRegister ? 'Зарегистрироваться' : 'Войти',
-                          icon: _isRegister ? Icons.person_add_alt_1 : Icons.login,
+                          icon: _isRegister
+                              ? Icons.person_add_alt_1
+                              : Icons.login,
                           onPressed: _submit,
                         ),
                         const SizedBox(height: 10),
@@ -168,7 +173,9 @@ class _LoginPageState extends State<LoginPage> {
                           label: _isRegister
                               ? 'Уже есть аккаунт — войти'
                               : 'Нет аккаунта — зарегистрироваться',
-                          icon: _isRegister ? Icons.login : Icons.person_add_outlined,
+                          icon: _isRegister
+                              ? Icons.login
+                              : Icons.person_add_outlined,
                           onPressed: () => setState(() {
                             _isRegister = !_isRegister;
                             _error = null;

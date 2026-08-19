@@ -20,8 +20,8 @@ class OperationalDataSeedService {
 
     final jsonStr = await rootBundle.loadString('assets/operational_data.json');
     final data = json.decode(jsonStr) as Map<String, dynamic>;
-    final stationNumbers =
-        (data['station_numbers'] as List<dynamic>).cast<String>();
+    final stationNumbers = (data['station_numbers'] as List<dynamic>)
+        .cast<String>();
     final requests = data['requests'] as List<dynamic>? ?? [];
     final maintenance = data['maintenance'] as List<dynamic>? ?? [];
 
@@ -53,17 +53,13 @@ class OperationalDataSeedService {
 
       for (final item in maintenance) {
         final m = item as Map<String, dynamic>;
-        await txn.insert(
-          'maintenance',
-          {
-            'station_number': m['station_number'],
-            'month': m['month'],
-            'status': m['status'] ?? 'pending',
-            'date_done': m['date_done'],
-            'to_type': m['to_type'],
-          },
-          conflictAlgorithm: ConflictAlgorithm.replace,
-        );
+        await txn.insert('maintenance', {
+          'station_number': m['station_number'],
+          'month': m['month'],
+          'status': m['status'] ?? 'pending',
+          'date_done': m['date_done'],
+          'to_type': m['to_type'],
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
       }
     });
 

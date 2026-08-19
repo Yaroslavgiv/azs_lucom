@@ -34,7 +34,10 @@ class GeocoderService {
       dotenv.isInitialized ? dotenv.env['DADATA_SECRET'] : null;
 
   bool get isConfigured =>
-      _token != null && _token!.isNotEmpty && _secret != null && _secret!.isNotEmpty;
+      _token != null &&
+      _token!.isNotEmpty &&
+      _secret != null &&
+      _secret!.isNotEmpty;
 
   Future<GeocodeResult> geocodeStation(Station station) async {
     if (!isConfigured) {
@@ -47,7 +50,9 @@ class GeocoderService {
 
     try {
       final response = await http.post(
-        Uri.parse('https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address'),
+        Uri.parse(
+          'https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address',
+        ),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -68,7 +73,8 @@ class GeocoderService {
       final d = first['data'] as Map<String, dynamic>?;
       final latStr = d?['geo_lat'] as String?;
       final lonStr = d?['geo_lon'] as String?;
-      if (latStr == null || lonStr == null) return GeocodeResult(success: false);
+      if (latStr == null || lonStr == null)
+        return GeocodeResult(success: false);
 
       final lat = double.parse(latStr);
       final lon = double.parse(lonStr);

@@ -55,10 +55,10 @@ class StationSeedService {
           limit: 1,
         );
         if (infoRows.isEmpty) {
-          await _db.db.insert(
-            'station_info',
-            {'station_number': number, 'manager_contact': ''},
-          );
+          await _db.db.insert('station_info', {
+            'station_number': number,
+            'manager_contact': '',
+          });
         }
       }
     }

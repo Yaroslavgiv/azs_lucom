@@ -58,7 +58,9 @@ class _ExportPageState extends ConsumerState<ExportPage> {
         final msg = usedCacheOnly
             ? '$label — файл отправлен (нет сети, данные из локального кеша)'
             : '$label — файл отправлен';
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(msg)));
       }
     } catch (e) {
       if (mounted) {
@@ -137,12 +139,19 @@ class _ExportPageState extends ConsumerState<ExportPage> {
                           const SizedBox(height: 10),
                           Row(
                             children: [
-                              Icon(Icons.cloud_sync, size: 18, color: _syncColor(syncStatus)),
+                              Icon(
+                                Icons.cloud_sync,
+                                size: 18,
+                                color: _syncColor(syncStatus),
+                              ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   '${_syncLabel(syncStatus)}${userEmail.isNotEmpty ? ' · $userEmail' : ''}',
-                                  style: TextStyle(color: _syncColor(syncStatus), fontSize: 13),
+                                  style: TextStyle(
+                                    color: _syncColor(syncStatus),
+                                    fontSize: 13,
+                                  ),
                                 ),
                               ),
                             ],
