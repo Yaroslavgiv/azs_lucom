@@ -105,11 +105,7 @@ class SyncService implements SyncChangePublisher {
   }
 
   Future<void> _putMap(String entity, String localId, String remoteId) async {
-    await _mapStore.put(
-      entity: entity,
-      localId: localId,
-      remoteId: remoteId,
-    );
+    await _mapStore.put(entity: entity, localId: localId, remoteId: remoteId);
   }
 
   Future<void> flushQueue() async {

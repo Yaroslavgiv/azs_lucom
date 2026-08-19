@@ -9,11 +9,7 @@ void main() {
     addTearDown(database.close);
     final store = SyncMapStore(database);
 
-    await store.put(
-      entity: 'requests',
-      localId: '12',
-      remoteId: 'remote-12',
-    );
+    await store.put(entity: 'requests', localId: '12', remoteId: 'remote-12');
 
     expect(await store.findRemoteId('requests', '12'), 'remote-12');
     expect(await store.findLocalId('requests', 'remote-12'), '12');
