@@ -1,11 +1,11 @@
-import 'package:azs_lucom/core/services/sync_queue_store.dart';
+import 'package:azs_app/core/services/sync_queue_store.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/test_database.dart';
 
 void main() {
   test('returns queued operations in insertion order', () async {
-    final database = await createTestDatabase();
+    final database = await openTestDatabase();
     addTearDown(database.close);
     final queue = SyncQueueStore(database);
 
@@ -26,7 +26,7 @@ void main() {
   });
 
   test('coalesces repeated changes for the same local record', () async {
-    final database = await createTestDatabase();
+    final database = await openTestDatabase();
     addTearDown(database.close);
     final queue = SyncQueueStore(database);
 
@@ -50,7 +50,7 @@ void main() {
   });
 
   test('removes only the acknowledged queue item', () async {
-    final database = await createTestDatabase();
+    final database = await openTestDatabase();
     addTearDown(database.close);
     final queue = SyncQueueStore(database);
 
