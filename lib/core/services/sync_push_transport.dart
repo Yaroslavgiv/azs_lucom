@@ -41,7 +41,8 @@ class FirestoreSyncPushTransport implements SyncPushTransport {
       item.entity,
       item.localPk,
     );
-    final remoteId = mappedRemoteId ??
+    final remoteId =
+        mappedRemoteId ??
         (_usesLocalIdAsRemoteId(item.entity) ? item.localPk : null);
     final collection = _firestore.collection(item.entity);
 
