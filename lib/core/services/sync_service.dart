@@ -6,6 +6,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../database/app_database.dart';
+import 'sync_logger.dart';
 
 enum SyncStatus { idle, syncing, offline, error, synced }
 
@@ -15,12 +16,15 @@ class SyncService {
     this._db, {
     FirebaseFirestore? firestore,
     Connectivity? connectivity,
+    SyncLogger logger = const DeveloperSyncLogger(),
   }) : _fs = firestore ?? FirebaseFirestore.instance,
-       _connectivity = connectivity ?? Connectivity();
+       _connectivity = connectivity ?? Connectivity(),
+       _logger = logger;
 
   final AppDatabase _db;
   final FirebaseFirestore _fs;
   final Connectivity _connectivity;
+  final SyncLogger _logger;
 
   bool _flushing = false;
   bool _pulling = false;
@@ -112,8 +116,9 @@ class SyncService {
               payload: payload,
             );
             await _db.db.delete('sync_queue', where: 'id = ?', whereArgs: [id]);
-          } catch (_) {
+          } catch (error, stackTrace) {
             // Keep item in queue; stop flush to avoid tight failure loop.
+            _logger.error('Failed to flush $entity/$localPk', error, stackTrace);
             return;
           }
         }
@@ -231,7 +236,8 @@ class SyncService {
 
       await _db.setMeta('last_pull_at', DateTime.now().toIso8601String());
       return SyncStatus.synced;
-    } catch (_) {
+    } catch (error, stackTrace) {
+      _logger.error('Failed to pull Firestore data', error, stackTrace);
       return SyncStatus.error;
     } finally {
       _pulling = false;

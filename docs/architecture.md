@@ -17,9 +17,9 @@
 
 ### Application composition
 
-`core/providers/app_providers.dart` — composition root приложения. Здесь
-создаются database, repositories и services, а также описываются производные
-асинхронные состояния.
+Каталог `core/providers/` — composition root приложения. Auth и infrastructure
+bindings разделены по отдельным файлам; `app_providers.dart` содержит только
+application orchestration и производные состояния.
 
 ### Data and integrations
 
@@ -33,6 +33,10 @@ Repositories инкапсулируют чтение и запись предм�
 Firestore выполняется отдельно. Неотправленные изменения сохраняются в
 `sync_queue`; сопоставление локальных и облачных идентификаторов находится в
 `sync_map`.
+
+Ошибки background-синхронизации сохраняют операцию в очереди и передаются в
+`SyncLogger` вместе со stack trace, поэтому сбой не теряется и не запускает
+бесконечный retry-loop.
 
 ## Dependency rule
 

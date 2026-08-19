@@ -2,14 +2,26 @@ import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
 class AppDatabase {
-  AppDatabase._();
-  static AppDatabase? _instance;
-  static Database? _db;
+  AppDatabase._(this._database);
 
-  static Future<AppDatabase> get instance async {
-    _instance ??= AppDatabase._();
-    _db ??= await _init();
-    return _instance!;
+  static Future<AppDatabase>? _instance;
+  final Database _database;
+
+  static Future<AppDatabase> get instance => _instance ??= _openDefault();
+
+  static Future<AppDatabase> _openDefault() async {
+    return AppDatabase._(await _init());
+  }
+
+  static Future<AppDatabase> openForTesting(DatabaseFactory factory) async {
+    final database = await factory.openDatabase(
+      inMemoryDatabasePath,
+      options: OpenDatabaseOptions(
+        version: 4,
+        onCreate: (database, _) => _createSchema(database),
+      ),
+    );
+    return AppDatabase._(database);
   }
 
   static Future<Database> _init() async {
@@ -171,11 +183,9 @@ class AppDatabase {
     );
   }
 
-  Database get db {
-    final database = _db;
-    if (database == null) throw StateError('Database not initialized');
-    return database;
-  }
+  Database get db => _database;
+
+  Future<void> close() => _database.close();
 
   Future<bool> isSeeded() async {
     final rows = await db.query(
