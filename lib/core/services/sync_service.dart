@@ -7,6 +7,7 @@ import 'package:sqflite/sqflite.dart';
 import '../database/app_database.dart';
 import 'sync_change_publisher.dart';
 import 'sync_logger.dart';
+import 'sync_map_store.dart';
 import 'sync_payload_resolver.dart';
 import 'sync_queue_store.dart';
 
@@ -21,12 +22,14 @@ class SyncService implements SyncChangePublisher {
     SyncLogger logger = const DeveloperSyncLogger(),
     SyncQueueStore? queueStore,
     SyncPayloadResolver? payloadResolver,
+    SyncMapStore? mapStore,
   }) : _db = database,
        _fs = firestore ?? FirebaseFirestore.instance,
        _connectivity = connectivity ?? Connectivity(),
        _logger = logger,
        _queueStore = queueStore ?? SyncQueueStore(database),
-       _payloadResolver = payloadResolver ?? SyncPayloadResolver(database);
+       _payloadResolver = payloadResolver ?? SyncPayloadResolver(database),
+       _mapStore = mapStore ?? SyncMapStore(database);
 
   final AppDatabase _db;
   final FirebaseFirestore _fs;
@@ -34,6 +37,7 @@ class SyncService implements SyncChangePublisher {
   final SyncLogger _logger;
   final SyncQueueStore _queueStore;
   final SyncPayloadResolver _payloadResolver;
+  final SyncMapStore _mapStore;
 
   bool _flushing = false;
   bool _pulling = false;
@@ -93,33 +97,19 @@ class SyncService implements SyncChangePublisher {
   }
 
   Future<String?> getRemoteId(String entity, String localId) async {
-    final rows = await _db.db.query(
-      'sync_map',
-      where: 'entity = ? AND local_id = ?',
-      whereArgs: [entity, localId],
-      limit: 1,
-    );
-    if (rows.isEmpty) return null;
-    return rows.first['remote_id'] as String?;
+    return _mapStore.findRemoteId(entity, localId);
   }
 
   Future<String?> getLocalId(String entity, String remoteId) async {
-    final rows = await _db.db.query(
-      'sync_map',
-      where: 'entity = ? AND remote_id = ?',
-      whereArgs: [entity, remoteId],
-      limit: 1,
-    );
-    if (rows.isEmpty) return null;
-    return rows.first['local_id'] as String?;
+    return _mapStore.findLocalId(entity, remoteId);
   }
 
   Future<void> _putMap(String entity, String localId, String remoteId) async {
-    await _db.db.insert('sync_map', {
-      'entity': entity,
-      'local_id': localId,
-      'remote_id': remoteId,
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    await _mapStore.put(
+      entity: entity,
+      localId: localId,
+      remoteId: remoteId,
+    );
   }
 
   Future<void> flushQueue() async {
@@ -172,11 +162,7 @@ class SyncService implements SyncChangePublisher {
               : null);
       if (remoteId != null) {
         await col.doc(remoteId).delete();
-        await _db.db.delete(
-          'sync_map',
-          where: 'entity = ? AND local_id = ?',
-          whereArgs: [entity, localPk],
-        );
+        await _mapStore.remove(entity, localPk);
       }
       return;
     }
@@ -306,11 +292,7 @@ class SyncService implements SyncChangePublisher {
     if (snap.docs.isEmpty) return;
 
     await _db.db.delete('maintenance');
-    await _db.db.delete(
-      'sync_map',
-      where: 'entity = ?',
-      whereArgs: [SyncEntity.maintenance],
-    );
+    await _mapStore.clearEntity(SyncEntity.maintenance);
     for (final doc in snap.docs) {
       final d = doc.data();
       final station =
@@ -347,7 +329,7 @@ class SyncService implements SyncChangePublisher {
     if (snap.docs.isEmpty) return;
 
     await _db.db.delete(table);
-    await _db.db.delete('sync_map', where: 'entity = ?', whereArgs: [entity]);
+    await _mapStore.clearEntity(entity);
     for (final doc in snap.docs) {
       final row = buildRow(doc.id, doc.data());
       final newId = await _db.db.insert(table, row);
