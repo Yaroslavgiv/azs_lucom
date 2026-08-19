@@ -32,6 +32,27 @@ Repositories публикуют локальные изменения через
 Это позволяет тестировать бизнес-операции с in-memory fake и заменять облачный
 transport без изменений в data layer.
 
+`SyncPayloadResolver` формирует облачные снимки из SQLite независимо от сетевого
+transport. `SyncService` оркестрирует очередь и Firestore, но больше не содержит
+SQL-запросы для построения payload.
+
+`SyncMapStore` владеет сопоставлением локальных и удалённых идентификаторов.
+Остальной sync-контур использует типизированные операции поиска, записи и очистки
+вместо прямых SQL-запросов к `sync_map`.
+
+Push pipeline разделён на `SyncQueueFlusher` и `SyncPushTransport`. Flusher
+отвечает только за порядок, acknowledgement и failure policy, а Firestore
+transport — за облачные upsert/delete и remote ID. Неуспешный элемент остаётся
+в очереди, последующие элементы не отправляются до следующего запуска.
+
+Firestore pull изолирован в `FirestorePullService`: он отвечает за получение
+cloud snapshots, замену локальных mapped-коллекций и обновление `last_pull_at`.
+Пустая облачная коллекция не удаляет локальный seed/cache.
+
+Первичная загрузка локального cache в пустой cloud выполняется
+`FirestoreCloudSeeder`. Независимые коллекции проверяются и загружаются
+параллельно; существующие cloud-данные никогда не перезаписываются seeding-ом.
+
 ## Offline-first invariant
 
 Локальная операция считается успешной после транзакции SQLite. Отправка в
