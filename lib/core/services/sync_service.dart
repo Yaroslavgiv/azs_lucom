@@ -9,6 +9,8 @@ import 'sync_change_publisher.dart';
 import 'sync_logger.dart';
 import 'sync_map_store.dart';
 import 'sync_payload_resolver.dart';
+import 'sync_push_transport.dart';
+import 'sync_queue_flusher.dart';
 import 'sync_queue_store.dart';
 
 enum SyncStatus { idle, syncing, offline, error, synced }
@@ -23,13 +25,27 @@ class SyncService implements SyncChangePublisher {
     SyncQueueStore? queueStore,
     SyncPayloadResolver? payloadResolver,
     SyncMapStore? mapStore,
+    SyncPushTransport? pushTransport,
+    SyncQueueFlusher? queueFlusher,
   }) : _db = database,
        _fs = firestore ?? FirebaseFirestore.instance,
        _connectivity = connectivity ?? Connectivity(),
        _logger = logger,
        _queueStore = queueStore ?? SyncQueueStore(database),
        _payloadResolver = payloadResolver ?? SyncPayloadResolver(database),
-       _mapStore = mapStore ?? SyncMapStore(database);
+       _mapStore = mapStore ?? SyncMapStore(database),
+       _queueFlusher =
+           queueFlusher ??
+           SyncQueueFlusher(
+             queueStore: queueStore ?? SyncQueueStore(database),
+             pushTransport:
+                 pushTransport ??
+                 FirestoreSyncPushTransport(
+                   firestore ?? FirebaseFirestore.instance,
+                   mapStore ?? SyncMapStore(database),
+                 ),
+             logger: logger,
+           );
 
   final AppDatabase _db;
   final FirebaseFirestore _fs;
@@ -38,8 +54,8 @@ class SyncService implements SyncChangePublisher {
   final SyncQueueStore _queueStore;
   final SyncPayloadResolver _payloadResolver;
   final SyncMapStore _mapStore;
+  final SyncQueueFlusher _queueFlusher;
 
-  bool _flushing = false;
   bool _pulling = false;
 
   Future<bool> isOnline() async {
@@ -96,93 +112,13 @@ class SyncService implements SyncChangePublisher {
     return enqueue(entity: entity, localPk: localPk, op: 'delete');
   }
 
-  Future<String?> getRemoteId(String entity, String localId) async {
-    return _mapStore.findRemoteId(entity, localId);
-  }
-
-  Future<String?> getLocalId(String entity, String remoteId) async {
-    return _mapStore.findLocalId(entity, remoteId);
-  }
-
   Future<void> _putMap(String entity, String localId, String remoteId) async {
     await _mapStore.put(entity: entity, localId: localId, remoteId: remoteId);
   }
 
   Future<void> flushQueue() async {
-    if (_flushing) return;
     if (!await isOnline()) return;
-    _flushing = true;
-    try {
-      while (true) {
-        final items = await _queueStore.nextBatch();
-        if (items.isEmpty) break;
-        for (final item in items) {
-          try {
-            await _pushOne(
-              entity: item.entity,
-              localPk: item.localPk,
-              op: item.operation,
-              payload: item.payload,
-            );
-            await _queueStore.remove(item.id);
-          } catch (error, stackTrace) {
-            // Keep item in queue; stop flush to avoid tight failure loop.
-            _logger.error(
-              'Failed to flush ${item.entity}/${item.localPk}',
-              error,
-              stackTrace,
-            );
-            return;
-          }
-        }
-      }
-    } finally {
-      _flushing = false;
-    }
-  }
-
-  Future<void> _pushOne({
-    required String entity,
-    required String localPk,
-    required String op,
-    required Map<String, Object?> payload,
-  }) async {
-    final col = _fs.collection(entity);
-    if (op == 'delete') {
-      final remoteId =
-          await getRemoteId(entity, localPk) ??
-          (entity == SyncEntity.stations ||
-                  entity == SyncEntity.stationInfo ||
-                  entity == SyncEntity.maintenance
-              ? localPk
-              : null);
-      if (remoteId != null) {
-        await col.doc(remoteId).delete();
-        await _mapStore.remove(entity, localPk);
-      }
-      return;
-    }
-
-    final data = Map<String, Object?>.from(payload);
-    data['updated_at'] = FieldValue.serverTimestamp();
-
-    String? remoteId = await getRemoteId(entity, localPk);
-    if (remoteId == null) {
-      if (entity == SyncEntity.stations || entity == SyncEntity.stationInfo) {
-        remoteId = localPk;
-      } else if (entity == SyncEntity.maintenance) {
-        remoteId = localPk; // station_month
-      }
-    }
-
-    if (remoteId == null) {
-      final doc = await col.add(data);
-      remoteId = doc.id;
-      await _putMap(entity, localPk, remoteId);
-    } else {
-      await col.doc(remoteId).set(data, SetOptions(merge: true));
-      await _putMap(entity, localPk, remoteId);
-    }
+    await _queueFlusher.flush();
   }
 
   /// Full pull from Firestore into sqflite cache.

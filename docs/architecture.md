@@ -40,6 +40,11 @@ SQL-запросы для построения payload.
 Остальной sync-контур использует типизированные операции поиска, записи и очистки
 вместо прямых SQL-запросов к `sync_map`.
 
+Push pipeline разделён на `SyncQueueFlusher` и `SyncPushTransport`. Flusher
+отвечает только за порядок, acknowledgement и failure policy, а Firestore
+transport — за облачные upsert/delete и remote ID. Неуспешный элемент остаётся
+в очереди, последующие элементы не отправляются до следующего запуска.
+
 ## Offline-first invariant
 
 Локальная операция считается успешной после транзакции SQLite. Отправка в
