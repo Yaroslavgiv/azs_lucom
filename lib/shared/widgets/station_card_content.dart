@@ -43,10 +43,7 @@ class StationCardContent extends StatelessWidget {
           ),
         if (showNumberBadge) const SizedBox(height: 10),
         if (station.name.isNotEmpty)
-          Text(
-            station.name,
-            style: theme.textTheme.titleMedium,
-          ),
+          Text(station.name, style: theme.textTheme.titleMedium),
         if (station.address.isNotEmpty) ...[
           const SizedBox(height: 10),
           Row(

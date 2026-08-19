@@ -1,12 +1,12 @@
 import '../database/app_database.dart';
 import '../models/request_item.dart';
-import '../services/sync_service.dart';
+import '../services/sync_change_publisher.dart';
 
 class RequestRepository {
-  RequestRepository(this._db, {SyncService? sync}) : _sync = sync;
+  RequestRepository(this._db, {SyncChangePublisher? sync}) : _sync = sync;
 
   final AppDatabase _db;
-  final SyncService? _sync;
+  final SyncChangePublisher? _sync;
 
   Future<List<RequestItem>> getOpenByStation(String stationNumber) async {
     final rows = await _db.db.query(
@@ -34,12 +34,7 @@ class RequestRepository {
     });
     final sync = _sync;
     if (sync != null) {
-      await sync.enqueue(
-        entity: SyncService.entityRequests,
-        localPk: '$id',
-        op: 'upsert',
-        payload: await sync.requestPayload(id),
-      );
+      await sync.publishUpsert(entity: SyncEntity.requests, localPk: '$id');
     }
     return id;
   }
@@ -53,12 +48,7 @@ class RequestRepository {
     );
     final sync = _sync;
     if (sync != null) {
-      await sync.enqueue(
-        entity: SyncService.entityRequests,
-        localPk: '$id',
-        op: 'upsert',
-        payload: await sync.requestPayload(id),
-      );
+      await sync.publishUpsert(entity: SyncEntity.requests, localPk: '$id');
     }
   }
 
@@ -69,22 +59,13 @@ class RequestRepository {
         '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
     await _db.db.update(
       'requests',
-      {
-        'status': 'closed',
-        'close_comment': comment,
-        'close_date': closeDate,
-      },
+      {'status': 'closed', 'close_comment': comment, 'close_date': closeDate},
       where: 'id = ?',
       whereArgs: [id],
     );
     final sync = _sync;
     if (sync != null) {
-      await sync.enqueue(
-        entity: SyncService.entityRequests,
-        localPk: '$id',
-        op: 'upsert',
-        payload: await sync.requestPayload(id),
-      );
+      await sync.publishUpsert(entity: SyncEntity.requests, localPk: '$id');
     }
   }
 }

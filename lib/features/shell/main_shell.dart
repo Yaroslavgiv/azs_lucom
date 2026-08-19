@@ -16,21 +16,14 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _index = 0;
 
-  static const _pages = [
-    MapPage(),
-    StationsListPage(),
-    ExportPage(),
-  ];
+  static const _pages = [MapPage(), StationsListPage(), ExportPage()];
 
   @override
   Widget build(BuildContext context) {
     return AppBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        body: IndexedStack(
-          index: _index,
-          children: _pages,
-        ),
+        body: IndexedStack(index: _index, children: _pages),
         bottomNavigationBar: AppBottomNav(
           index: _index,
           onChanged: (i) => setState(() => _index = i),

@@ -114,7 +114,7 @@ class _StationList extends ConsumerWidget {
               return ListView.separated(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                 itemCount: stations.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                separatorBuilder: (_, _) => const SizedBox(height: 10),
                 itemBuilder: (ctx, i) {
                   final s = stations[i];
                   return StaggeredFadeIn(
@@ -153,7 +153,9 @@ class _StationList extends ConsumerWidget {
                               children: [
                                 Text(
                                   '№${s.number} — ${s.displayTitle}',
-                                  style: Theme.of(context).textTheme.titleMedium,
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.titleMedium,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -163,7 +165,9 @@ class _StationList extends ConsumerWidget {
                                     s.address,
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(context).textTheme.bodySmall,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodySmall,
                                   ),
                                 ],
                               ],
@@ -195,7 +199,10 @@ class _StationList extends ConsumerWidget {
               child: CircularProgressIndicator(color: AppColors.accent),
             ),
             error: (e, _) => Center(
-              child: Text('Ошибка: $e', style: const TextStyle(color: AppColors.error)),
+              child: Text(
+                'Ошибка: $e',
+                style: const TextStyle(color: AppColors.error),
+              ),
             ),
           ),
         ),
@@ -209,10 +216,7 @@ class _StationList extends ConsumerWidget {
 }
 
 class _MaintenanceActionBar extends StatelessWidget {
-  const _MaintenanceActionBar({
-    required this.onDone,
-    required this.onPending,
-  });
+  const _MaintenanceActionBar({required this.onDone, required this.onPending});
 
   final VoidCallback onDone;
   final VoidCallback onPending;

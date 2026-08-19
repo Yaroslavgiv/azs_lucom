@@ -12,7 +12,10 @@ Future<void> showMapRouteDialog(BuildContext context, LatLng point) async {
         title: const Text('Маршрут'),
         content: const Text('Открыть навигатор?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Отмена'),
+          ),
           TextButton(
             onPressed: () async {
               await ExternalMapsService.openYandexRoute(

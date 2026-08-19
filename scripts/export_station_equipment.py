@@ -18,20 +18,6 @@ CATEGORY_FIRE = "Пожарка"
 CATEGORY_KTSB = "КТСБ"
 W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 
-DEFAULT_PATHS = {
-    "spb_aps": Path(r"c:\Users\User\Downloads\С флешки\Aкты\ААЗС\АПС\2026"),
-    "novgorod_aps_feb": Path(
-        r"c:\Users\User\Downloads\С флешки\Aкты\Новгородские АЗС\2026\Февраль"
-    ),
-    "novgorod_aps_extra": Path(
-        r"c:\Users\User\Downloads\С флешки\Aкты\Новгородские АЗС\АПС"
-    ),
-    "novgorod_ktsb": Path(
-        r"c:\Users\User\Downloads\С флешки\Aкты\Новгородские АЗС\КТСБ"
-    ),
-}
-
-
 def para_text(element: ET.Element) -> str:
     return "".join((node.text or "") for node in element.iter(f"{W}t"))
 
@@ -275,14 +261,14 @@ def export(paths: dict[str, Path]) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--spb-aps", type=Path, default=DEFAULT_PATHS["spb_aps"])
+    parser.add_argument("--spb-aps", type=Path, required=True)
     parser.add_argument(
-        "--novgorod-aps-feb", type=Path, default=DEFAULT_PATHS["novgorod_aps_feb"]
+        "--novgorod-aps-feb", type=Path, required=True
     )
     parser.add_argument(
-        "--novgorod-aps-extra", type=Path, default=DEFAULT_PATHS["novgorod_aps_extra"]
+        "--novgorod-aps-extra", type=Path, required=True
     )
-    parser.add_argument("--novgorod-ktsb", type=Path, default=DEFAULT_PATHS["novgorod_ktsb"])
+    parser.add_argument("--novgorod-ktsb", type=Path, required=True)
     args = parser.parse_args()
     export(
         {

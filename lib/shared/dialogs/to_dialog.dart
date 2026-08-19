@@ -5,7 +5,10 @@ import 'package:webviewimage/webviewimage.dart';
 import '../../core/providers/app_providers.dart';
 import '../utils/date_format.dart';
 
-Future<void> showToDialog(BuildContext context, {required String stationNumber}) async {
+Future<void> showToDialog(
+  BuildContext context, {
+  required String stationNumber,
+}) async {
   await showDialog<void>(
     context: context,
     builder: (ctx) => WebViewAware(
@@ -71,7 +74,9 @@ class _ToDialogBodyState extends ConsumerState<_ToDialogBody> {
     widget.onClose();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('ТО по станции ${widget.stationNumber} отмечено')),
+        SnackBar(
+          content: Text('ТО по станции ${widget.stationNumber} отмечено'),
+        ),
       );
     }
   }
@@ -79,11 +84,14 @@ class _ToDialogBodyState extends ConsumerState<_ToDialogBody> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const AlertDialog(content: Center(child: CircularProgressIndicator()));
+      return const AlertDialog(
+        content: Center(child: CircularProgressIndicator()),
+      );
     }
 
     if (_doneThisMonth) {
-      final info = 'ТО в этом месяце уже выполнено: ${formatMaintenanceDate(_dateDone)}'
+      final info =
+          'ТО в этом месяце уже выполнено: ${formatMaintenanceDate(_dateDone)}'
           '${_toType != null && _toType!.isNotEmpty ? ' ($_toType)' : ''}';
       return AlertDialog(
         title: Text('ТО — АЗС ${widget.stationNumber}'),

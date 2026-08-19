@@ -41,7 +41,8 @@ String renderDefectActText({
 Заключение: ${_textOrDash(conclusion)}
 
 Все неисправное оборудование, которое подлежит замене, оставлено на объекте.
-'''.trim();
+'''
+      .trim();
 }
 
 String _textOrDash(String v) => v.trim().isEmpty ? '—' : v.trim();

@@ -25,7 +25,8 @@ class AzsApp extends ConsumerWidget {
           return const _AuthenticatedHome();
         },
         loading: () => const _LoadingScreen(message: 'Проверка входа…'),
-        error: (error, _) => _ErrorScreen(message: 'Ошибка авторизации: $error'),
+        error: (error, _) =>
+            _ErrorScreen(message: 'Ошибка авторизации: $error'),
       ),
     );
   }

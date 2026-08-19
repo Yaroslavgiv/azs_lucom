@@ -6,7 +6,9 @@ class EquipmentRepository {
 
   final AppDatabase _db;
 
-  Future<List<StationEquipmentItem>> listForStation(String stationNumber) async {
+  Future<List<StationEquipmentItem>> listForStation(
+    String stationNumber,
+  ) async {
     final rows = await _db.db.query(
       'station_equipment',
       where: 'station_number = ?',
@@ -16,4 +18,3 @@ class EquipmentRepository {
     return rows.map(StationEquipmentItem.fromMap).toList();
   }
 }
-

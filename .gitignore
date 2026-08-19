@@ -3,6 +3,8 @@
 *.log
 *.pyc
 *.swp
+*.bak
+*.rar
 .DS_Store
 .atom/
 .build/
@@ -43,6 +45,9 @@ serviceAccount*.json
 .pub/
 /build/
 /coverage/
+assets/*.xlsx
+tools/template_*.txt
+tools/w_t_concat.txt
 
 # Symbolication related
 app.*.symbols

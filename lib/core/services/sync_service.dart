@@ -1,34 +1,38 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../database/app_database.dart';
+import 'sync_change_publisher.dart';
+import 'sync_logger.dart';
+import 'sync_queue_store.dart';
 
 enum SyncStatus { idle, syncing, offline, error, synced }
 
 /// Bidirectional sync between sqflite cache and Cloud Firestore.
-class SyncService {
-  SyncService(this._db, {FirebaseFirestore? firestore, Connectivity? connectivity})
-      : _fs = firestore ?? FirebaseFirestore.instance,
-        _connectivity = connectivity ?? Connectivity();
+class SyncService implements SyncChangePublisher {
+  SyncService(
+    AppDatabase database, {
+    FirebaseFirestore? firestore,
+    Connectivity? connectivity,
+    SyncLogger logger = const DeveloperSyncLogger(),
+    SyncQueueStore? queueStore,
+  }) : _db = database,
+       _fs = firestore ?? FirebaseFirestore.instance,
+       _connectivity = connectivity ?? Connectivity(),
+       _logger = logger,
+       _queueStore = queueStore ?? SyncQueueStore(database);
 
   final AppDatabase _db;
   final FirebaseFirestore _fs;
   final Connectivity _connectivity;
+  final SyncLogger _logger;
+  final SyncQueueStore _queueStore;
 
   bool _flushing = false;
   bool _pulling = false;
-
-  static const entityStations = 'stations';
-  static const entityRequests = 'requests';
-  static const entityMaintenance = 'maintenance';
-  static const entityStationEquipment = 'station_equipment';
-  static const entityStationInfo = 'station_info';
-  static const entityDefectActs = 'defect_acts';
-  static const entityEquipmentOrderExports = 'equipment_order_exports';
 
   Future<bool> isOnline() async {
     final results = await _connectivity.checkConnectivity();
@@ -41,14 +45,74 @@ class SyncService {
     required String op,
     Map<String, Object?>? payload,
   }) async {
-    await _db.db.insert('sync_queue', {
-      'entity': entity,
-      'local_pk': localPk,
-      'op': op,
-      'payload_json': jsonEncode(payload ?? {}),
-      'created_at': DateTime.now().toIso8601String(),
-    });
+    await _queueStore.put(
+      entity: entity,
+      localPk: localPk,
+      operation: op,
+      payload: payload ?? const {},
+    );
     unawaited(flushQueue());
+  }
+
+  @override
+  Future<void> publishUpsert({
+    required String entity,
+    required String localPk,
+  }) async {
+    await publishUpsertPayload(
+      entity: entity,
+      localPk: localPk,
+      payload: await _payloadFor(entity, localPk),
+    );
+  }
+
+  @override
+  Future<void> publishUpsertPayload({
+    required String entity,
+    required String localPk,
+    required Map<String, Object?> payload,
+  }) {
+    return enqueue(
+      entity: entity,
+      localPk: localPk,
+      op: 'upsert',
+      payload: payload,
+    );
+  }
+
+  @override
+  Future<void> publishDelete({
+    required String entity,
+    required String localPk,
+  }) {
+    return enqueue(entity: entity, localPk: localPk, op: 'delete');
+  }
+
+  Future<Map<String, Object?>> _payloadFor(
+    String entity,
+    String localPk,
+  ) async {
+    switch (entity) {
+      case SyncEntity.stations:
+        return _stationPayload(localPk);
+      case SyncEntity.requests:
+        return _requestPayload(int.parse(localPk));
+      case SyncEntity.maintenance:
+        final separator = localPk.indexOf('_');
+        if (separator < 1 || separator == localPk.length - 1) return {};
+        return _maintenancePayload(
+          localPk.substring(0, separator),
+          localPk.substring(separator + 1),
+        );
+      case SyncEntity.stationEquipment:
+        return _equipmentPayload(int.parse(localPk));
+      case SyncEntity.stationInfo:
+        return _stationInfoPayload(localPk);
+      case SyncEntity.defectActs:
+        return _defectActPayload(int.parse(localPk));
+      default:
+        return {};
+    }
   }
 
   Future<String?> getRemoteId(String entity, String localId) async {
@@ -74,11 +138,11 @@ class SyncService {
   }
 
   Future<void> _putMap(String entity, String localId, String remoteId) async {
-    await _db.db.insert(
-      'sync_map',
-      {'entity': entity, 'local_id': localId, 'remote_id': remoteId},
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await _db.db.insert('sync_map', {
+      'entity': entity,
+      'local_id': localId,
+      'remote_id': remoteId,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<void> flushQueue() async {
@@ -87,25 +151,24 @@ class SyncService {
     _flushing = true;
     try {
       while (true) {
-        final rows = await _db.db.query(
-          'sync_queue',
-          orderBy: 'id ASC',
-          limit: 25,
-        );
-        if (rows.isEmpty) break;
-        for (final row in rows) {
-          final id = row['id'] as int;
-          final entity = row['entity'] as String;
-          final localPk = row['local_pk'] as String;
-          final op = row['op'] as String;
-          final payload = Map<String, Object?>.from(
-            jsonDecode(row['payload_json'] as String) as Map,
-          );
+        final items = await _queueStore.nextBatch();
+        if (items.isEmpty) break;
+        for (final item in items) {
           try {
-            await _pushOne(entity: entity, localPk: localPk, op: op, payload: payload);
-            await _db.db.delete('sync_queue', where: 'id = ?', whereArgs: [id]);
-          } catch (_) {
+            await _pushOne(
+              entity: item.entity,
+              localPk: item.localPk,
+              op: item.operation,
+              payload: item.payload,
+            );
+            await _queueStore.remove(item.id);
+          } catch (error, stackTrace) {
             // Keep item in queue; stop flush to avoid tight failure loop.
+            _logger.error(
+              'Failed to flush ${item.entity}/${item.localPk}',
+              error,
+              stackTrace,
+            );
             return;
           }
         }
@@ -123,10 +186,11 @@ class SyncService {
   }) async {
     final col = _fs.collection(entity);
     if (op == 'delete') {
-      final remoteId = await getRemoteId(entity, localPk) ??
-          (entity == entityStations ||
-                  entity == entityStationInfo ||
-                  entity == entityMaintenance
+      final remoteId =
+          await getRemoteId(entity, localPk) ??
+          (entity == SyncEntity.stations ||
+                  entity == SyncEntity.stationInfo ||
+                  entity == SyncEntity.maintenance
               ? localPk
               : null);
       if (remoteId != null) {
@@ -145,9 +209,9 @@ class SyncService {
 
     String? remoteId = await getRemoteId(entity, localPk);
     if (remoteId == null) {
-      if (entity == entityStations || entity == entityStationInfo) {
+      if (entity == SyncEntity.stations || entity == SyncEntity.stationInfo) {
         remoteId = localPk;
-      } else if (entity == entityMaintenance) {
+      } else if (entity == SyncEntity.maintenance) {
         remoteId = localPk; // station_month
       }
     }
@@ -173,7 +237,7 @@ class SyncService {
       await _pullStationInfo();
       await _pullMaintenance();
       await _replaceMappedCollection(
-        entity: entityRequests,
+        entity: SyncEntity.requests,
         table: 'requests',
         buildRow: (remoteId, data) => {
           'station_number': data['station_number'],
@@ -187,7 +251,7 @@ class SyncService {
         },
       );
       await _replaceMappedCollection(
-        entity: entityStationEquipment,
+        entity: SyncEntity.stationEquipment,
         table: 'station_equipment',
         buildRow: (remoteId, data) => {
           'station_number': data['station_number'],
@@ -196,7 +260,7 @@ class SyncService {
         },
       );
       await _replaceMappedCollection(
-        entity: entityDefectActs,
+        entity: SyncEntity.defectActs,
         table: 'defect_acts',
         buildRow: (remoteId, data) => {
           'station_number': data['station_number'],
@@ -211,7 +275,7 @@ class SyncService {
         },
       );
       await _replaceMappedCollection(
-        entity: entityEquipmentOrderExports,
+        entity: SyncEntity.equipmentOrderExports,
         table: 'equipment_order_exports',
         buildRow: (remoteId, data) => {
           'region': data['region'] ?? '',
@@ -222,7 +286,8 @@ class SyncService {
 
       await _db.setMeta('last_pull_at', DateTime.now().toIso8601String());
       return SyncStatus.synced;
-    } catch (_) {
+    } catch (error, stackTrace) {
+      _logger.error('Failed to pull Firestore data', error, stackTrace);
       return SyncStatus.error;
     } finally {
       _pulling = false;
@@ -230,44 +295,36 @@ class SyncService {
   }
 
   Future<void> _pullStations() async {
-    final snap = await _fs.collection(entityStations).get();
+    final snap = await _fs.collection(SyncEntity.stations).get();
     for (final doc in snap.docs) {
       final d = doc.data();
-      await _db.db.insert(
-        'stations',
-        {
-          'number': doc.id,
-          'name': d['name'] ?? '',
-          'address': d['address'] ?? '',
-          'lat': d['lat'],
-          'lon': d['lon'],
-          'region': d['region'] ?? '',
-          'geocode_status': (d['geocode_status'] as num?)?.toInt() ?? 0,
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
-      await _putMap(entityStations, doc.id, doc.id);
+      await _db.db.insert('stations', {
+        'number': doc.id,
+        'name': d['name'] ?? '',
+        'address': d['address'] ?? '',
+        'lat': d['lat'],
+        'lon': d['lon'],
+        'region': d['region'] ?? '',
+        'geocode_status': (d['geocode_status'] as num?)?.toInt() ?? 0,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      await _putMap(SyncEntity.stations, doc.id, doc.id);
     }
   }
 
   Future<void> _pullStationInfo() async {
-    final snap = await _fs.collection(entityStationInfo).get();
+    final snap = await _fs.collection(SyncEntity.stationInfo).get();
     for (final doc in snap.docs) {
       final d = doc.data();
-      await _db.db.insert(
-        'station_info',
-        {
-          'station_number': doc.id,
-          'manager_contact': d['manager_contact'] ?? '',
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
-      await _putMap(entityStationInfo, doc.id, doc.id);
+      await _db.db.insert('station_info', {
+        'station_number': doc.id,
+        'manager_contact': d['manager_contact'] ?? '',
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      await _putMap(SyncEntity.stationInfo, doc.id, doc.id);
     }
   }
 
   Future<void> _pullMaintenance() async {
-    final snap = await _fs.collection(entityMaintenance).get();
+    final snap = await _fs.collection(SyncEntity.maintenance).get();
     // Пустой cloud не должен затирать локальный seed/кеш.
     if (snap.docs.isEmpty) return;
 
@@ -275,35 +332,38 @@ class SyncService {
     await _db.db.delete(
       'sync_map',
       where: 'entity = ?',
-      whereArgs: [entityMaintenance],
+      whereArgs: [SyncEntity.maintenance],
     );
     for (final doc in snap.docs) {
       final d = doc.data();
-      final station = (d['station_number'] as String?) ?? doc.id.split('_').first;
-      final month = (d['month'] as String?) ??
-          (doc.id.contains('_') ? doc.id.substring(doc.id.indexOf('_') + 1) : '');
+      final station =
+          (d['station_number'] as String?) ?? doc.id.split('_').first;
+      final month =
+          (d['month'] as String?) ??
+          (doc.id.contains('_')
+              ? doc.id.substring(doc.id.indexOf('_') + 1)
+              : '');
       if (station.isEmpty || month.isEmpty) continue;
       final localPk = '${station}_$month';
-      await _db.db.insert(
-        'maintenance',
-        {
-          'station_number': station,
-          'month': month,
-          'status': d['status'] ?? 'pending',
-          'date_done': d['date_done'],
-          'to_type': d['to_type'],
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
-      await _putMap(entityMaintenance, localPk, doc.id);
+      await _db.db.insert('maintenance', {
+        'station_number': station,
+        'month': month,
+        'status': d['status'] ?? 'pending',
+        'date_done': d['date_done'],
+        'to_type': d['to_type'],
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      await _putMap(SyncEntity.maintenance, localPk, doc.id);
     }
   }
 
   Future<void> _replaceMappedCollection({
     required String entity,
     required String table,
-    required Map<String, Object?> Function(String remoteId, Map<String, dynamic> data)
-        buildRow,
+    required Map<String, Object?> Function(
+      String remoteId,
+      Map<String, dynamic> data,
+    )
+    buildRow,
   }) async {
     final snap = await _fs.collection(entity).get();
     // Пустой cloud не должен затирать локальный seed/кеш.
@@ -329,11 +389,11 @@ class SyncService {
 
     var uploaded = false;
 
-    if (await _isCollectionEmpty(entityStations)) {
+    if (await _isCollectionEmpty(SyncEntity.stations)) {
       final stations = await _db.db.query('stations');
       for (final s in stations) {
         final number = s['number'] as String;
-        await _fs.collection(entityStations).doc(number).set({
+        await _fs.collection(SyncEntity.stations).doc(number).set({
           'name': s['name'] ?? '',
           'address': s['address'] ?? '',
           'lat': s['lat'],
@@ -342,31 +402,31 @@ class SyncService {
           'geocode_status': s['geocode_status'] ?? 0,
           'updated_at': FieldValue.serverTimestamp(),
         });
-        await _putMap(entityStations, number, number);
+        await _putMap(SyncEntity.stations, number, number);
       }
       uploaded = stations.isNotEmpty || uploaded;
     }
 
-    if (await _isCollectionEmpty(entityStationInfo)) {
+    if (await _isCollectionEmpty(SyncEntity.stationInfo)) {
       final infos = await _db.db.query('station_info');
       for (final row in infos) {
         final sn = row['station_number'] as String;
-        await _fs.collection(entityStationInfo).doc(sn).set({
+        await _fs.collection(SyncEntity.stationInfo).doc(sn).set({
           'manager_contact': row['manager_contact'] ?? '',
           'updated_at': FieldValue.serverTimestamp(),
         });
-        await _putMap(entityStationInfo, sn, sn);
+        await _putMap(SyncEntity.stationInfo, sn, sn);
       }
       uploaded = infos.isNotEmpty || uploaded;
     }
 
-    if (await _isCollectionEmpty(entityMaintenance)) {
+    if (await _isCollectionEmpty(SyncEntity.maintenance)) {
       final maint = await _db.db.query('maintenance');
       for (final row in maint) {
         final sn = row['station_number'] as String;
         final month = row['month'] as String;
         final id = '${sn}_$month';
-        await _fs.collection(entityMaintenance).doc(id).set({
+        await _fs.collection(SyncEntity.maintenance).doc(id).set({
           'station_number': sn,
           'month': month,
           'status': row['status'] ?? 'pending',
@@ -374,7 +434,7 @@ class SyncService {
           'to_type': row['to_type'],
           'updated_at': FieldValue.serverTimestamp(),
         });
-        await _putMap(entityMaintenance, id, id);
+        await _putMap(SyncEntity.maintenance, id, id);
       }
       uploaded = maint.isNotEmpty || uploaded;
     }
@@ -393,16 +453,19 @@ class SyncService {
     }
 
     uploaded =
-        await uploadMappedIfEmpty(entityRequests, 'requests') || uploaded;
-    uploaded = await uploadMappedIfEmpty(
-          entityStationEquipment,
+        await uploadMappedIfEmpty(SyncEntity.requests, 'requests') || uploaded;
+    uploaded =
+        await uploadMappedIfEmpty(
+          SyncEntity.stationEquipment,
           'station_equipment',
         ) ||
         uploaded;
     uploaded =
-        await uploadMappedIfEmpty(entityDefectActs, 'defect_acts') || uploaded;
-    uploaded = await uploadMappedIfEmpty(
-          entityEquipmentOrderExports,
+        await uploadMappedIfEmpty(SyncEntity.defectActs, 'defect_acts') ||
+        uploaded;
+    uploaded =
+        await uploadMappedIfEmpty(
+          SyncEntity.equipmentOrderExports,
           'equipment_order_exports',
         ) ||
         uploaded;
@@ -413,8 +476,13 @@ class SyncService {
     return uploaded;
   }
 
-  Future<Map<String, Object?>> requestPayload(int id) async {
-    final rows = await _db.db.query('requests', where: 'id = ?', whereArgs: [id], limit: 1);
+  Future<Map<String, Object?>> _requestPayload(int id) async {
+    final rows = await _db.db.query(
+      'requests',
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
     if (rows.isEmpty) return {};
     final r = rows.first;
     return {
@@ -429,7 +497,10 @@ class SyncService {
     };
   }
 
-  Future<Map<String, Object?>> maintenancePayload(String stationNumber, String month) async {
+  Future<Map<String, Object?>> _maintenancePayload(
+    String stationNumber,
+    String month,
+  ) async {
     final rows = await _db.db.query(
       'maintenance',
       where: 'station_number = ? AND month = ?',
@@ -447,9 +518,13 @@ class SyncService {
     };
   }
 
-  Future<Map<String, Object?>> equipmentPayload(int id) async {
-    final rows =
-        await _db.db.query('station_equipment', where: 'id = ?', whereArgs: [id], limit: 1);
+  Future<Map<String, Object?>> _equipmentPayload(int id) async {
+    final rows = await _db.db.query(
+      'station_equipment',
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
     if (rows.isEmpty) return {};
     final r = rows.first;
     return {
@@ -459,15 +534,36 @@ class SyncService {
     };
   }
 
-  Future<Map<String, Object?>> defectActPayload(int id) async {
-    final rows = await _db.db.query('defect_acts', where: 'id = ?', whereArgs: [id], limit: 1);
+  Future<Map<String, Object?>> _stationInfoPayload(String stationNumber) async {
+    final rows = await _db.db.query(
+      'station_info',
+      where: 'station_number = ?',
+      whereArgs: [stationNumber],
+      limit: 1,
+    );
+    if (rows.isEmpty) return {};
+    return {'manager_contact': rows.first['manager_contact']};
+  }
+
+  Future<Map<String, Object?>> _defectActPayload(int id) async {
+    final rows = await _db.db.query(
+      'defect_acts',
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
     if (rows.isEmpty) return {};
     final r = Map<String, Object?>.from(rows.first)..remove('id');
     return r;
   }
 
-  Future<Map<String, Object?>> stationPayload(String number) async {
-    final rows = await _db.db.query('stations', where: 'number = ?', whereArgs: [number], limit: 1);
+  Future<Map<String, Object?>> _stationPayload(String number) async {
+    final rows = await _db.db.query(
+      'stations',
+      where: 'number = ?',
+      whereArgs: [number],
+      limit: 1,
+    );
     if (rows.isEmpty) return {};
     final r = rows.first;
     return {

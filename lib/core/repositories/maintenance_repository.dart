@@ -2,14 +2,10 @@ import 'package:sqflite/sqflite.dart';
 
 import '../database/app_database.dart';
 import '../models/station.dart';
-import '../services/sync_service.dart';
+import '../services/sync_change_publisher.dart';
 
 class StationMaintenanceItem {
-  StationMaintenanceItem({
-    required this.station,
-    this.dateDone,
-    this.toType,
-  });
+  StationMaintenanceItem({required this.station, this.dateDone, this.toType});
 
   final Station station;
   final String? dateDone;
@@ -17,11 +13,7 @@ class StationMaintenanceItem {
 }
 
 class MaintenanceStatus {
-  MaintenanceStatus({
-    required this.status,
-    this.toType,
-    this.dateDone,
-  });
+  MaintenanceStatus({required this.status, this.toType, this.dateDone});
 
   final String status;
   final String? toType;
@@ -31,10 +23,10 @@ class MaintenanceStatus {
 }
 
 class MaintenanceRepository {
-  MaintenanceRepository(this._db, {SyncService? sync}) : _sync = sync;
+  MaintenanceRepository(this._db, {SyncChangePublisher? sync}) : _sync = sync;
 
   final AppDatabase _db;
-  final SyncService? _sync;
+  final SyncChangePublisher? _sync;
 
   String _currentMonth() {
     final n = DateTime.now();
@@ -99,25 +91,19 @@ class MaintenanceRepository {
     final dateDone =
         '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')} '
         '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-    await _db.db.insert(
-      'maintenance',
-      {
-        'station_number': stationNumber,
-        'month': month,
-        'status': 'done',
-        'date_done': dateDone,
-        'to_type': toType,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await _db.db.insert('maintenance', {
+      'station_number': stationNumber,
+      'month': month,
+      'status': 'done',
+      'date_done': dateDone,
+      'to_type': toType,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
     final sync = _sync;
     if (sync != null) {
       final localPk = '${stationNumber}_$month';
-      await sync.enqueue(
-        entity: SyncService.entityMaintenance,
+      await sync.publishUpsert(
+        entity: SyncEntity.maintenance,
         localPk: localPk,
-        op: 'upsert',
-        payload: await sync.maintenancePayload(stationNumber, month),
       );
     }
   }
@@ -128,7 +114,8 @@ class MaintenanceRepository {
   }) async {
     final month = _currentMonth();
     final rows = done
-        ? await _db.db.rawQuery('''
+        ? await _db.db.rawQuery(
+            '''
             SELECT s.number, s.name, s.address, s.region, s.lat, s.lon, s.geocode_status,
               m.date_done, m.to_type
             FROM stations s
@@ -136,8 +123,11 @@ class MaintenanceRepository {
               ON s.number = m.station_number AND m.month = ? AND m.status = 'done'
             WHERE s.region = ?
             ORDER BY CAST(s.number AS INTEGER)
-          ''', [month, region])
-        : await _db.db.rawQuery('''
+          ''',
+            [month, region],
+          )
+        : await _db.db.rawQuery(
+            '''
             SELECT s.number, s.name, s.address, s.region, s.lat, s.lon, s.geocode_status,
               m.date_done, m.to_type
             FROM stations s
@@ -145,7 +135,9 @@ class MaintenanceRepository {
               ON s.number = m.station_number AND m.month = ?
             WHERE s.region = ? AND (m.status IS NULL OR m.status != 'done')
             ORDER BY CAST(s.number AS INTEGER)
-          ''', [month, region]);
+          ''',
+            [month, region],
+          );
 
     return rows.map((row) {
       return StationMaintenanceItem(

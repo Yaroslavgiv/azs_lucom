@@ -18,12 +18,12 @@ class RequestItem {
   final String status;
 
   factory RequestItem.fromMap(Map<String, Object?> map) => RequestItem(
-        id: map['id'] as int,
-        stationNumber: map['station_number'] as String,
-        type: map['type'] as String,
-        requestType: map['request_type'] as String,
-        description: (map['description'] as String?) ?? '',
-        dateCreated: map['date_created'] as String,
-        status: map['status'] as String,
-      );
+    id: map['id'] as int,
+    stationNumber: map['station_number'] as String,
+    type: map['type'] as String,
+    requestType: map['request_type'] as String,
+    description: (map['description'] as String?) ?? '',
+    dateCreated: map['date_created'] as String,
+    status: map['status'] as String,
+  );
 }

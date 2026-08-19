@@ -18,14 +18,13 @@ dependencies:
   share_plus: ^10.1.4
   http: ^1.2.2
   flutter_dotenv: ^5.2.1
+  flutter_map: 8.2.2
   latlong2: ^0.9.1
   geolocator: ^14.0.2
   url_launcher: ^6.3.1
   webviewimage: ^0.0.6
   intl: ^0.20.2
   archive: ^3.6.1
-  ntk_map_view:
-    path: ../../EdetGruz/edet_gruz/packages/ntk_map_view
   firebase_core: ^4.13.0
   cloud_firestore: ^6.8.0
   firebase_auth: ^6.5.7
@@ -36,6 +35,7 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.3
+  sqflite_common_ffi: 2.4.0+3
 
 flutter_launcher_icons:
   android: true
@@ -51,4 +51,3 @@ flutter:
     - assets/operational_data.json
     - assets/station_equipment.json
     - assets/templates/defect_act_template.docx
-    - .env

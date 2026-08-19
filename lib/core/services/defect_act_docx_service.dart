@@ -18,11 +18,14 @@ class DefectActDocxService {
     required Station station,
     required DefectAct act,
   }) async {
-    final templateBytes = (await rootBundle.load(_templateAsset)).buffer.asUint8List();
+    final templateBytes = (await rootBundle.load(
+      _templateAsset,
+    )).buffer.asUint8List();
     final archive = ZipDecoder().decodeBytes(templateBytes);
     final values = _buildValues(station: station, act: act);
     var documentXml = utf8.decode(
-      archive.files.firstWhere((f) => f.name == 'word/document.xml').content as List<int>,
+      archive.files.firstWhere((f) => f.name == 'word/document.xml').content
+          as List<int>,
     );
     for (final entry in values.entries) {
       documentXml = documentXml.replaceAll(entry.key, _xmlEscape(entry.value));

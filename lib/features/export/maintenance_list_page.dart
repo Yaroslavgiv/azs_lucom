@@ -7,8 +7,9 @@ import '../../shared/utils/date_format.dart';
 import '../station_detail/station_detail_page.dart';
 
 String maintenanceListTitle(String region, bool done) {
-  final regionLabel =
-      region == regionNovgorod ? regionLabelNovgorod : regionLabelSpb;
+  final regionLabel = region == regionNovgorod
+      ? regionLabelNovgorod
+      : regionLabelSpb;
   final statusLabel = done ? 'сделаны' : 'не сделаны';
   return '$regionLabel — ТО $statusLabel';
 }
@@ -24,9 +25,11 @@ class MaintenanceListPage extends ConsumerWidget {
   final bool done;
 
   void _refresh(WidgetRef ref) {
-    ref.invalidate(maintenanceListProvider(
-      MaintenanceListFilter(region: region, done: done),
-    ));
+    ref.invalidate(
+      maintenanceListProvider(
+        MaintenanceListFilter(region: region, done: done),
+      ),
+    );
   }
 
   @override
@@ -50,19 +53,21 @@ class MaintenanceListPage extends ConsumerWidget {
           if (items.isEmpty) {
             return Center(
               child: Text(
-                done ? 'Нет станций с выполненным ТО' : 'Все станции с выполненным ТО',
+                done
+                    ? 'Нет станций с выполненным ТО'
+                    : 'Все станции с выполненным ТО',
               ),
             );
           }
           return ListView.separated(
             itemCount: items.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
+            separatorBuilder: (_, _) => const Divider(height: 1),
             itemBuilder: (ctx, i) {
               final item = items[i];
               final station = item.station;
               final subtitle = done
                   ? 'ТО: ${formatMaintenanceDate(item.dateDone)}'
-                      '${item.toType != null && item.toType!.isNotEmpty ? ' (${item.toType})' : ''}'
+                        '${item.toType != null && item.toType!.isNotEmpty ? ' (${item.toType})' : ''}'
                   : station.displayTitle;
 
               return ListTile(

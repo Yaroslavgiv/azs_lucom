@@ -3,11 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 
 class AppBottomNav extends StatelessWidget {
-  const AppBottomNav({
-    super.key,
-    required this.index,
-    required this.onChanged,
-  });
+  const AppBottomNav({super.key, required this.index, required this.onChanged});
 
   final int index;
   final ValueChanged<int> onChanged;

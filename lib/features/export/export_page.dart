@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -58,7 +57,9 @@ class _ExportPageState extends ConsumerState<ExportPage> {
         final msg = usedCacheOnly
             ? '$label — файл отправлен (нет сети, данные из локального кеша)'
             : '$label — файл отправлен';
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(msg)));
       }
     } catch (e) {
       if (mounted) {
@@ -91,7 +92,7 @@ class _ExportPageState extends ConsumerState<ExportPage> {
   @override
   Widget build(BuildContext context) {
     final syncStatus = ref.watch(syncStatusProvider);
-    final userEmail = FirebaseAuth.instance.currentUser?.email ?? '';
+    final userEmail = ref.watch(authStateProvider).value?.email ?? '';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -110,7 +111,7 @@ class _ExportPageState extends ConsumerState<ExportPage> {
                 ),
                 IconButton(
                   tooltip: 'Выйти',
-                  onPressed: () => FirebaseAuth.instance.signOut(),
+                  onPressed: () => ref.read(authRepositoryProvider).signOut(),
                   icon: const Icon(Icons.logout),
                 ),
               ],
@@ -137,12 +138,19 @@ class _ExportPageState extends ConsumerState<ExportPage> {
                           const SizedBox(height: 10),
                           Row(
                             children: [
-                              Icon(Icons.cloud_sync, size: 18, color: _syncColor(syncStatus)),
+                              Icon(
+                                Icons.cloud_sync,
+                                size: 18,
+                                color: _syncColor(syncStatus),
+                              ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   '${_syncLabel(syncStatus)}${userEmail.isNotEmpty ? ' · $userEmail' : ''}',
-                                  style: TextStyle(color: _syncColor(syncStatus), fontSize: 13),
+                                  style: TextStyle(
+                                    color: _syncColor(syncStatus),
+                                    fontSize: 13,
+                                  ),
                                 ),
                               ),
                             ],

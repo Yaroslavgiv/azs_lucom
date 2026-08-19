@@ -27,7 +27,8 @@ class DefectAct {
     return DefectAct(
       id: (m['id'] as int?) ?? 0,
       stationNumber: (m['station_number'] as String?) ?? '',
-      createdAt: DateTime.tryParse((m['created_at'] as String?) ?? '') ??
+      createdAt:
+          DateTime.tryParse((m['created_at'] as String?) ?? '') ??
           DateTime.fromMillisecondsSinceEpoch(0),
       equipmentCategory: (m['equipment_category'] as String?) ?? '',
       equipmentName: (m['equipment_name'] as String?) ?? '',
@@ -53,4 +54,3 @@ class DefectAct {
     };
   }
 }
-

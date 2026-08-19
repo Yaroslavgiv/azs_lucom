@@ -6,7 +6,7 @@ Requires:
   GOOGLE_APPLICATION_CREDENTIALS pointing to a service account JSON
   OR run: firebase login && use application default credentials
 
-Usage (from mobile/):
+Usage (from the repository root):
   python scripts/upload_seed_to_firestore.py
 """
 
