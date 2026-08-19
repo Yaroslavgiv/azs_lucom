@@ -5,11 +5,30 @@
 ## Запуск
 
 ```bash
-cd mobile
+git clone https://github.com/Yaroslavgiv/azs_lucom.git
+cd azs_lucom
+cp .env.example .env # необязательно: ключи нужны только для DaData
 flutter pub get
-# Опционально: ключи DaData в mobile/.env (см. .env.example)
 flutter run
 ```
+
+Проект не использует локальные path-зависимости и собирается независимо от
+других репозиториев. Карта реализована на `flutter_map` и публичных тайлах
+OpenStreetMap.
+
+Без файла `.env` приложение также запускается: недоступным останется только
+поиск координат через DaData. Firebase-конфигурация уже находится в проекте.
+
+## Проверка качества
+
+```bash
+dart format --output=none --set-exit-if-changed lib test
+flutter analyze --fatal-infos
+flutter test --coverage
+flutter build apk --debug
+```
+
+Эти же проверки автоматически выполняются в GitHub Actions для каждого PR.
 
 ## Станции и координаты
 
@@ -34,6 +53,6 @@ python scripts/geocode_stations_nominatim.py
 
 ## Структура
 
-- Вкладка **Карта** — `ntk_map_view`, маркеры с номером в popup
+- Вкладка **Карта** — `flutter_map`, маркеры с номером АЗС
 - Вкладка **Станции** — табы Новгород / СПб
 - Вкладка **Экспорт** — xlsx + «Поделиться»

@@ -18,8 +18,8 @@ const String regionSpb = 'spb';
 const String regionLabelNovgorod = 'Новгород';
 const String regionLabelSpb = 'Санкт-Петербург';
 
-const String mapStyleLight =
-    'https://storage.yandexcloud.net/eg-small-backet/map/lightmap.json';
+const String mapTileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+const String mapTileUserAgentPackageName = 'com.azs.azs_app';
 
 /// Номера АЗС с красным маркером на карте (приоритет над статусом ТО).
 const Set<String> highlightedStationNumbers = {
