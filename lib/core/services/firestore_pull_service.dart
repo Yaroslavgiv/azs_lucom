@@ -149,10 +149,6 @@ class FirestorePullService {
   }
 
   Future<void> _putMap(String entity, String localId, String remoteId) {
-    return _mapStore.put(
-      entity: entity,
-      localId: localId,
-      remoteId: remoteId,
-    );
+    return _mapStore.put(entity: entity, localId: localId, remoteId: remoteId);
   }
 }
