@@ -73,8 +73,9 @@ class GeocoderService {
       final d = first['data'] as Map<String, dynamic>?;
       final latStr = d?['geo_lat'] as String?;
       final lonStr = d?['geo_lon'] as String?;
-      if (latStr == null || lonStr == null)
+      if (latStr == null || lonStr == null) {
         return GeocodeResult(success: false);
+      }
 
       final lat = double.parse(latStr);
       final lon = double.parse(lonStr);

@@ -114,7 +114,7 @@ class _StationList extends ConsumerWidget {
               return ListView.separated(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                 itemCount: stations.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                separatorBuilder: (_, _) => const SizedBox(height: 10),
                 itemBuilder: (ctx, i) {
                   final s = stations[i];
                   return StaggeredFadeIn(

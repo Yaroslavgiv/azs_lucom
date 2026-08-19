@@ -61,7 +61,7 @@ class MaintenanceListPage extends ConsumerWidget {
           }
           return ListView.separated(
             itemCount: items.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
+            separatorBuilder: (_, _) => const Divider(height: 1),
             itemBuilder: (ctx, i) {
               final item = items[i];
               final station = item.station;

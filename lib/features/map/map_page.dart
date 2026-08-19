@@ -121,10 +121,10 @@ class _MapPageState extends ConsumerState<MapPage> {
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(appInitProvider, (_, __) {
+    ref.listen(appInitProvider, (_, _) {
       if (_mapReady) _loadMarkers();
     });
-    ref.listen(mapRefreshProvider, (_, __) {
+    ref.listen(mapRefreshProvider, (_, _) {
       if (_mapReady) _loadMarkers();
     });
 
@@ -319,7 +319,7 @@ class _MapPageState extends ConsumerState<MapPage> {
                       _markerIconUrl(station),
                       width: 30,
                       height: 40,
-                      errorBuilder: (_, __, ___) => const Icon(
+                      errorBuilder: (_, _, _) => const Icon(
                         Icons.location_on,
                         size: 40,
                         color: AppColors.accent,
