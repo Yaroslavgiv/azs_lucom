@@ -1,8 +1,5 @@
 abstract interface class SyncChangePublisher {
-  Future<void> publishUpsert({
-    required String entity,
-    required String localPk,
-  });
+  Future<void> publishUpsert({required String entity, required String localPk});
 
   Future<void> publishUpsertPayload({
     required String entity,
@@ -10,10 +7,7 @@ abstract interface class SyncChangePublisher {
     required Map<String, Object?> payload,
   });
 
-  Future<void> publishDelete({
-    required String entity,
-    required String localPk,
-  });
+  Future<void> publishDelete({required String entity, required String localPk});
 }
 
 abstract final class SyncEntity {

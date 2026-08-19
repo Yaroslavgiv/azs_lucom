@@ -534,9 +534,7 @@ class SyncService implements SyncChangePublisher {
     };
   }
 
-  Future<Map<String, Object?>> _stationInfoPayload(
-    String stationNumber,
-  ) async {
+  Future<Map<String, Object?>> _stationInfoPayload(String stationNumber) async {
     final rows = await _db.db.query(
       'station_info',
       where: 'station_number = ?',

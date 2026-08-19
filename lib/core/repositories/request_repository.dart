@@ -34,10 +34,7 @@ class RequestRepository {
     });
     final sync = _sync;
     if (sync != null) {
-      await sync.publishUpsert(
-        entity: SyncEntity.requests,
-        localPk: '$id',
-      );
+      await sync.publishUpsert(entity: SyncEntity.requests, localPk: '$id');
     }
     return id;
   }
@@ -51,10 +48,7 @@ class RequestRepository {
     );
     final sync = _sync;
     if (sync != null) {
-      await sync.publishUpsert(
-        entity: SyncEntity.requests,
-        localPk: '$id',
-      );
+      await sync.publishUpsert(entity: SyncEntity.requests, localPk: '$id');
     }
   }
 
@@ -71,10 +65,7 @@ class RequestRepository {
     );
     final sync = _sync;
     if (sync != null) {
-      await sync.publishUpsert(
-        entity: SyncEntity.requests,
-        localPk: '$id',
-      );
+      await sync.publishUpsert(entity: SyncEntity.requests, localPk: '$id');
     }
   }
 }

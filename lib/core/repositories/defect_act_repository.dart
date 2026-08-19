@@ -52,10 +52,7 @@ class DefectActRepository {
     final id = await _db.db.insert('defect_acts', act.toInsertMap());
     final sync = _sync;
     if (sync != null) {
-      await sync.publishUpsert(
-        entity: SyncEntity.defectActs,
-        localPk: '$id',
-      );
+      await sync.publishUpsert(entity: SyncEntity.defectActs, localPk: '$id');
     }
     return id;
   }
@@ -64,10 +61,7 @@ class DefectActRepository {
     await _db.db.delete('defect_acts', where: 'id = ?', whereArgs: [id]);
     final sync = _sync;
     if (sync != null) {
-      await sync.publishDelete(
-        entity: SyncEntity.defectActs,
-        localPk: '$id',
-      );
+      await sync.publishDelete(entity: SyncEntity.defectActs, localPk: '$id');
     }
   }
 
@@ -83,10 +77,7 @@ class DefectActRepository {
     );
     final sync = _sync;
     if (sync != null) {
-      await sync.publishUpsert(
-        entity: SyncEntity.defectActs,
-        localPk: '$id',
-      );
+      await sync.publishUpsert(entity: SyncEntity.defectActs, localPk: '$id');
     }
   }
 }

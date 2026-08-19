@@ -86,10 +86,7 @@ class StationRepository {
     );
     final sync = _sync;
     if (sync != null) {
-      await sync.publishUpsert(
-        entity: SyncEntity.stations,
-        localPk: number,
-      );
+      await sync.publishUpsert(entity: SyncEntity.stations, localPk: number);
     }
   }
 
@@ -102,10 +99,7 @@ class StationRepository {
     );
     final sync = _sync;
     if (sync != null) {
-      await sync.publishUpsert(
-        entity: SyncEntity.stations,
-        localPk: number,
-      );
+      await sync.publishUpsert(entity: SyncEntity.stations, localPk: number);
     }
   }
 }
