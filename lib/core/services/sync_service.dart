@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -7,24 +6,29 @@ import 'package:sqflite/sqflite.dart';
 
 import '../database/app_database.dart';
 import 'sync_logger.dart';
+import 'sync_queue_store.dart';
 
 enum SyncStatus { idle, syncing, offline, error, synced }
 
 /// Bidirectional sync between sqflite cache and Cloud Firestore.
 class SyncService {
   SyncService(
-    this._db, {
+    AppDatabase database, {
     FirebaseFirestore? firestore,
     Connectivity? connectivity,
     SyncLogger logger = const DeveloperSyncLogger(),
-  }) : _fs = firestore ?? FirebaseFirestore.instance,
+    SyncQueueStore? queueStore,
+  }) : _db = database,
+       _fs = firestore ?? FirebaseFirestore.instance,
        _connectivity = connectivity ?? Connectivity(),
-       _logger = logger;
+       _logger = logger,
+       _queueStore = queueStore ?? SyncQueueStore(database);
 
   final AppDatabase _db;
   final FirebaseFirestore _fs;
   final Connectivity _connectivity;
   final SyncLogger _logger;
+  final SyncQueueStore _queueStore;
 
   bool _flushing = false;
   bool _pulling = false;
@@ -48,13 +52,12 @@ class SyncService {
     required String op,
     Map<String, Object?>? payload,
   }) async {
-    await _db.db.insert('sync_queue', {
-      'entity': entity,
-      'local_pk': localPk,
-      'op': op,
-      'payload_json': jsonEncode(payload ?? {}),
-      'created_at': DateTime.now().toIso8601String(),
-    });
+    await _queueStore.put(
+      entity: entity,
+      localPk: localPk,
+      operation: op,
+      payload: payload ?? const {},
+    );
     unawaited(flushQueue());
   }
 
@@ -94,32 +97,21 @@ class SyncService {
     _flushing = true;
     try {
       while (true) {
-        final rows = await _db.db.query(
-          'sync_queue',
-          orderBy: 'id ASC',
-          limit: 25,
-        );
-        if (rows.isEmpty) break;
-        for (final row in rows) {
-          final id = row['id'] as int;
-          final entity = row['entity'] as String;
-          final localPk = row['local_pk'] as String;
-          final op = row['op'] as String;
-          final payload = Map<String, Object?>.from(
-            jsonDecode(row['payload_json'] as String) as Map,
-          );
+        final items = await _queueStore.nextBatch();
+        if (items.isEmpty) break;
+        for (final item in items) {
           try {
             await _pushOne(
-              entity: entity,
-              localPk: localPk,
-              op: op,
-              payload: payload,
+              entity: item.entity,
+              localPk: item.localPk,
+              op: item.operation,
+              payload: item.payload,
             );
-            await _db.db.delete('sync_queue', where: 'id = ?', whereArgs: [id]);
+            await _queueStore.remove(item.id);
           } catch (error, stackTrace) {
             // Keep item in queue; stop flush to avoid tight failure loop.
             _logger.error(
-              'Failed to flush $entity/$localPk',
+              'Failed to flush ${item.entity}/${item.localPk}',
               error,
               stackTrace,
             );

@@ -17,7 +17,7 @@ class AppDatabase {
     final database = await factory.openDatabase(
       inMemoryDatabasePath,
       options: OpenDatabaseOptions(
-        version: 4,
+        version: 5,
         onCreate: (database, _) => _createSchema(database),
       ),
     );
@@ -28,7 +28,7 @@ class AppDatabase {
     final path = join(await getDatabasesPath(), 'azs_app.db');
     return openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: (db, version) async {
         await _createSchema(db);
       },
@@ -66,6 +66,10 @@ class AppDatabase {
         }
         if (oldVersion < 4) {
           await _createSyncTables(db);
+        }
+        if (oldVersion < 5) {
+          await _deduplicateSyncQueue(db);
+          await _createSyncQueueUniqueIndex(db);
         }
       },
     );
@@ -180,6 +184,25 @@ class AppDatabase {
     ''');
     await db.execute(
       'CREATE UNIQUE INDEX IF NOT EXISTS idx_sync_map_remote ON sync_map(entity, remote_id)',
+    );
+    await _createSyncQueueUniqueIndex(db);
+  }
+
+  static Future<void> _deduplicateSyncQueue(Database database) async {
+    await database.execute('''
+      DELETE FROM sync_queue
+      WHERE id NOT IN (
+        SELECT MAX(id)
+        FROM sync_queue
+        GROUP BY entity, local_pk
+      )
+    ''');
+  }
+
+  static Future<void> _createSyncQueueUniqueIndex(Database database) async {
+    await database.execute(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_sync_queue_entity_local '
+      'ON sync_queue(entity, local_pk)',
     );
   }
 
