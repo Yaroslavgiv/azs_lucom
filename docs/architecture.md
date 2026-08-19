@@ -32,6 +32,10 @@ Repositories публикуют локальные изменения через
 Это позволяет тестировать бизнес-операции с in-memory fake и заменять облачный
 transport без изменений в data layer.
 
+`SyncPayloadResolver` формирует облачные снимки из SQLite независимо от сетевого
+transport. `SyncService` оркестрирует очередь и Firestore, но больше не содержит
+SQL-запросы для построения payload.
+
 ## Offline-first invariant
 
 Локальная операция считается успешной после транзакции SQLite. Отправка в

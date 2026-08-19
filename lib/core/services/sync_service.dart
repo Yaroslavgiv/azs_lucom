@@ -7,6 +7,7 @@ import 'package:sqflite/sqflite.dart';
 import '../database/app_database.dart';
 import 'sync_change_publisher.dart';
 import 'sync_logger.dart';
+import 'sync_payload_resolver.dart';
 import 'sync_queue_store.dart';
 
 enum SyncStatus { idle, syncing, offline, error, synced }
@@ -19,17 +20,20 @@ class SyncService implements SyncChangePublisher {
     Connectivity? connectivity,
     SyncLogger logger = const DeveloperSyncLogger(),
     SyncQueueStore? queueStore,
+    SyncPayloadResolver? payloadResolver,
   }) : _db = database,
        _fs = firestore ?? FirebaseFirestore.instance,
        _connectivity = connectivity ?? Connectivity(),
        _logger = logger,
-       _queueStore = queueStore ?? SyncQueueStore(database);
+       _queueStore = queueStore ?? SyncQueueStore(database),
+       _payloadResolver = payloadResolver ?? SyncPayloadResolver(database);
 
   final AppDatabase _db;
   final FirebaseFirestore _fs;
   final Connectivity _connectivity;
   final SyncLogger _logger;
   final SyncQueueStore _queueStore;
+  final SyncPayloadResolver _payloadResolver;
 
   bool _flushing = false;
   bool _pulling = false;
@@ -62,7 +66,7 @@ class SyncService implements SyncChangePublisher {
     await publishUpsertPayload(
       entity: entity,
       localPk: localPk,
-      payload: await _payloadFor(entity, localPk),
+      payload: await _payloadResolver.resolve(entity: entity, localPk: localPk),
     );
   }
 
@@ -86,33 +90,6 @@ class SyncService implements SyncChangePublisher {
     required String localPk,
   }) {
     return enqueue(entity: entity, localPk: localPk, op: 'delete');
-  }
-
-  Future<Map<String, Object?>> _payloadFor(
-    String entity,
-    String localPk,
-  ) async {
-    switch (entity) {
-      case SyncEntity.stations:
-        return _stationPayload(localPk);
-      case SyncEntity.requests:
-        return _requestPayload(int.parse(localPk));
-      case SyncEntity.maintenance:
-        final separator = localPk.indexOf('_');
-        if (separator < 1 || separator == localPk.length - 1) return {};
-        return _maintenancePayload(
-          localPk.substring(0, separator),
-          localPk.substring(separator + 1),
-        );
-      case SyncEntity.stationEquipment:
-        return _equipmentPayload(int.parse(localPk));
-      case SyncEntity.stationInfo:
-        return _stationInfoPayload(localPk);
-      case SyncEntity.defectActs:
-        return _defectActPayload(int.parse(localPk));
-      default:
-        return {};
-    }
   }
 
   Future<String?> getRemoteId(String entity, String localId) async {
@@ -476,103 +453,4 @@ class SyncService implements SyncChangePublisher {
     return uploaded;
   }
 
-  Future<Map<String, Object?>> _requestPayload(int id) async {
-    final rows = await _db.db.query(
-      'requests',
-      where: 'id = ?',
-      whereArgs: [id],
-      limit: 1,
-    );
-    if (rows.isEmpty) return {};
-    final r = rows.first;
-    return {
-      'station_number': r['station_number'],
-      'type': r['type'],
-      'request_type': r['request_type'],
-      'description': r['description'],
-      'date_created': r['date_created'],
-      'status': r['status'],
-      'close_comment': r['close_comment'],
-      'close_date': r['close_date'],
-    };
-  }
-
-  Future<Map<String, Object?>> _maintenancePayload(
-    String stationNumber,
-    String month,
-  ) async {
-    final rows = await _db.db.query(
-      'maintenance',
-      where: 'station_number = ? AND month = ?',
-      whereArgs: [stationNumber, month],
-      limit: 1,
-    );
-    if (rows.isEmpty) return {};
-    final r = rows.first;
-    return {
-      'station_number': r['station_number'],
-      'month': r['month'],
-      'status': r['status'],
-      'date_done': r['date_done'],
-      'to_type': r['to_type'],
-    };
-  }
-
-  Future<Map<String, Object?>> _equipmentPayload(int id) async {
-    final rows = await _db.db.query(
-      'station_equipment',
-      where: 'id = ?',
-      whereArgs: [id],
-      limit: 1,
-    );
-    if (rows.isEmpty) return {};
-    final r = rows.first;
-    return {
-      'station_number': r['station_number'],
-      'category': r['category'],
-      'description': r['description'],
-    };
-  }
-
-  Future<Map<String, Object?>> _stationInfoPayload(String stationNumber) async {
-    final rows = await _db.db.query(
-      'station_info',
-      where: 'station_number = ?',
-      whereArgs: [stationNumber],
-      limit: 1,
-    );
-    if (rows.isEmpty) return {};
-    return {'manager_contact': rows.first['manager_contact']};
-  }
-
-  Future<Map<String, Object?>> _defectActPayload(int id) async {
-    final rows = await _db.db.query(
-      'defect_acts',
-      where: 'id = ?',
-      whereArgs: [id],
-      limit: 1,
-    );
-    if (rows.isEmpty) return {};
-    final r = Map<String, Object?>.from(rows.first)..remove('id');
-    return r;
-  }
-
-  Future<Map<String, Object?>> _stationPayload(String number) async {
-    final rows = await _db.db.query(
-      'stations',
-      where: 'number = ?',
-      whereArgs: [number],
-      limit: 1,
-    );
-    if (rows.isEmpty) return {};
-    final r = rows.first;
-    return {
-      'name': r['name'],
-      'address': r['address'],
-      'lat': r['lat'],
-      'lon': r['lon'],
-      'region': r['region'],
-      'geocode_status': r['geocode_status'],
-    };
-  }
 }
