@@ -66,7 +66,10 @@ class SyncService implements SyncChangePublisher {
     await publishUpsertPayload(
       entity: entity,
       localPk: localPk,
-      payload: await _payloadResolver.resolve(entity: entity, localPk: localPk),
+      payload: await _payloadResolver.resolve(
+        entity: entity,
+        localPk: localPk,
+      ),
     );
   }
 

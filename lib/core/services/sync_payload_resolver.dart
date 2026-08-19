@@ -88,9 +88,7 @@ class SyncPayloadResolver {
     };
   }
 
-  Future<Map<String, Object?>> _stationInfoPayload(
-    String stationNumber,
-  ) async {
+  Future<Map<String, Object?>> _stationInfoPayload(String stationNumber) async {
     final rows = await _database.db.query(
       'station_info',
       where: 'station_number = ?',
