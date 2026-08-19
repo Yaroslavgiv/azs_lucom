@@ -15,11 +15,7 @@ void main() {
       operation: 'upsert',
       payload: {'name': 'First'},
     );
-    await queue.put(
-      entity: 'requests',
-      localPk: '2',
-      operation: 'delete',
-    );
+    await queue.put(entity: 'requests', localPk: '2', operation: 'delete');
 
     final items = await queue.nextBatch();
 
@@ -58,16 +54,8 @@ void main() {
     addTearDown(database.close);
     final queue = SyncQueueStore(database);
 
-    await queue.put(
-      entity: 'stations',
-      localPk: '1',
-      operation: 'delete',
-    );
-    await queue.put(
-      entity: 'stations',
-      localPk: '2',
-      operation: 'delete',
-    );
+    await queue.put(entity: 'stations', localPk: '1', operation: 'delete');
+    await queue.put(entity: 'stations', localPk: '2', operation: 'delete');
     final first = (await queue.nextBatch()).first;
 
     await queue.remove(first.id);
