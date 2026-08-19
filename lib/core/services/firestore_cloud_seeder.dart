@@ -17,10 +17,7 @@ class FirestoreCloudSeeder {
       _seedStationInfo(),
       _seedMaintenance(),
       _seedMappedCollection(SyncEntity.requests, 'requests'),
-      _seedMappedCollection(
-        SyncEntity.stationEquipment,
-        'station_equipment',
-      ),
+      _seedMappedCollection(SyncEntity.stationEquipment, 'station_equipment'),
       _seedMappedCollection(SyncEntity.defectActs, 'defect_acts'),
       _seedMappedCollection(
         SyncEntity.equipmentOrderExports,
@@ -107,10 +104,6 @@ class FirestoreCloudSeeder {
   }
 
   Future<void> _putMap(String entity, String localId, String remoteId) {
-    return _mapStore.put(
-      entity: entity,
-      localId: localId,
-      remoteId: remoteId,
-    );
+    return _mapStore.put(entity: entity, localId: localId, remoteId: remoteId);
   }
 }
