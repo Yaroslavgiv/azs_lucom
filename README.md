@@ -1,23 +1,87 @@
-# AZS App (Flutter)
+# AZS App
 
-Офлайн-приложение для учёта заявок и ТО по АЗС бригады **Новгород** + **Краснухин** (Санкт-Петербург).
+[![Flutter CI](https://github.com/Yaroslavgiv/azs_lucom/actions/workflows/flutter.yml/badge.svg)](https://github.com/Yaroslavgiv/azs_lucom/actions/workflows/flutter.yml)
+![Flutter](https://img.shields.io/badge/Flutter-3.47-02569B?logo=flutter)
+![Dart](https://img.shields.io/badge/Dart-3.11-0175C2?logo=dart)
+![Architecture](https://img.shields.io/badge/architecture-feature--first-success)
 
-## Запуск
+Offline-first Flutter-приложение для учёта заявок, технического обслуживания
+и оборудования сети АЗС в Санкт-Петербурге и Новгородской области.
+
+Проект демонстрирует прикладную Flutter-разработку: локальную реляционную БД,
+двустороннюю синхронизацию с Firebase, интерактивную карту, формирование Excel
+и DOCX, feature-first структуру и автоматический quality gate.
+
+## Возможности
+
+- авторизация через Firebase Authentication;
+- offline-first работа на базе SQLite;
+- синхронизация локальных изменений с Cloud Firestore;
+- карта АЗС на `flutter_map` и OpenStreetMap;
+- учёт заявок, ТО, оборудования и дефектных актов;
+- экспорт рабочих отчётов в XLSX;
+- создание DOCX по шаблону;
+- фильтрация по Санкт-Петербургу и Новгородской области;
+- безопасный запуск без локальных path-пакетов и без обязательного `.env`.
+
+## Архитектура
+
+```mermaid
+flowchart TD
+    UI[Feature UI] --> P[Riverpod providers]
+    P --> R[Repositories]
+    R --> DB[(SQLite cache)]
+    R --> S[Sync service]
+    S --> FS[(Cloud Firestore)]
+    P --> X[Export and geocoding services]
+```
+
+```text
+lib/
+├── core/
+│   ├── database/       # SQLite schema and connection
+│   ├── models/         # Domain and persistence models
+│   ├── providers/      # Composition root / Riverpod providers
+│   ├── repositories/   # Data-access boundaries
+│   ├── services/       # Sync, seed, export, geocoding, DOCX
+│   └── theme/          # Material 3 design system
+├── features/           # Feature-first presentation modules
+└── shared/             # Reusable UI and navigation
+```
+
+UI не обращается к SQLite, Firebase Auth или Firestore напрямую. Внешние
+системы изолированы repository/service-слоем, а зависимости собираются через
+Riverpod providers. Подробнее: [архитектурные решения](docs/architecture.md).
+
+## Поток данных
+
+1. UI записывает изменения через repository.
+2. Repository сохраняет их в SQLite и добавляет операцию в `sync_queue`.
+3. `SyncService` отправляет очередь в Firestore при наличии сети.
+4. При запуске и ручной синхронизации актуальные облачные данные обновляют кеш.
+5. Экспорт сначала пытается получить свежие данные, но остаётся доступным offline.
+
+## Быстрый старт
+
+Требования: Flutter `3.47.0`, Dart `3.11.x`, настроенный Firebase-проект.
 
 ```bash
 git clone https://github.com/Yaroslavgiv/azs_lucom.git
 cd azs_lucom
-cp .env.example .env # необязательно: ключи нужны только для DaData
 flutter pub get
 flutter run
 ```
 
-Проект не использует локальные path-зависимости и собирается независимо от
-других репозиториев. Карта реализована на `flutter_map` и публичных тайлах
-OpenStreetMap.
+DaData используется только для геокодинга и не блокирует запуск приложения:
 
-Без файла `.env` приложение также запускается: недоступным останется только
-поиск координат через DaData. Firebase-конфигурация уже находится в проекте.
+```bash
+cp .env.example .env
+```
+
+Затем заполните `DADATA_TOKEN` и `DADATA_SECRET`. Файл `.env` исключён из Git.
+
+Firebase client-конфигурация не является серверным секретом. Service Account,
+keystore, пароли и приватные `.env`-файлы в репозитории запрещены.
 
 ## Проверка качества
 
@@ -28,31 +92,33 @@ flutter test --coverage
 flutter build apk --debug
 ```
 
-Эти же проверки автоматически выполняются в GitHub Actions для каждого PR.
+GitHub Actions выполняет эти команды для каждого pull request и дополнительно
+проверяет отсутствие зависимостей на родительские локальные каталоги.
 
-## Станции и координаты
+Стратегия тестирования описана в [docs/testing.md](docs/testing.md).
 
-Списки закладок Яндекс.Карт:
+## Основной стек
 
-- СПб: https://yandex.ru/maps/?bookmarks%5BpublicId%5D=q6DYkOiJ
-- Новгород: https://yandex.ru/maps/?bookmarks%5BpublicId%5D=83p1HWzN
+| Область | Технология |
+|---|---|
+| UI | Flutter, Material 3 |
+| State / DI | Riverpod |
+| Local storage | SQLite / sqflite |
+| Cloud | Firebase Auth, Cloud Firestore |
+| Map | flutter_map, OpenStreetMap |
+| Reports | excel, archive, share_plus |
+| Integrations | DaData, external map applications |
+| Quality | flutter_lints, Flutter Test, GitHub Actions |
 
-Импорт из Яндекс (когда API доступен):
+## Документация
 
-```bash
-python scripts/import_yandex_bookmarks.py
-```
+- [Архитектура и границы слоёв](docs/architecture.md)
+- [Стратегия тестирования](docs/testing.md)
+- [Безопасность и конфигурация](docs/security.md)
 
-Заполнение координат через Nominatim (если Яндекс отвечает 429):
+## Лицензия и данные
 
-```bash
-python scripts/geocode_stations_nominatim.py
-```
-
-Базовый список номеров — из `Распределение.xlsx` (колонки Krasnukhin / Новгород).
-
-## Структура
-
-- Вкладка **Карта** — `flutter_map`, маркеры с номером АЗС
-- Вкладка **Станции** — табы Новгород / СПб
-- Вкладка **Экспорт** — xlsx + «Поделиться»
+Репозиторий предназначен для демонстрации инженерного подхода. Перед
+production-развёртыванием необходимо использовать отдельный Firebase-проект,
+проверить Firestore Rules и заменить демонстрационные справочники данными
+заказчика.

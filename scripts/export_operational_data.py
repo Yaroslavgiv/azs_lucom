@@ -76,12 +76,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "source_db",
-        nargs="?",
-        default=r"c:\Users\User\Downloads\azs_bot\azs.db",
         help="Путь к azs.db",
+        type=Path,
     )
     args = parser.parse_args()
-    export(Path(args.source_db))
+    if not args.source_db.is_file():
+        parser.error(f"База данных не найдена: {args.source_db}")
+    export(args.source_db)
 
 
 if __name__ == "__main__":

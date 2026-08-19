@@ -1,19 +1,21 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/providers/app_providers.dart';
+import '../../core/repositories/auth_repository.dart';
 import '../../core/theme/app_colors.dart';
 import '../../shared/widgets/app_background.dart';
 import '../../shared/widgets/app_buttons.dart';
 import '../../shared/widgets/glass_card.dart';
 
-class LoginPage extends StatefulWidget {
+class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  ConsumerState<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginPageState extends ConsumerState<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _busy = false;
@@ -31,12 +33,13 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _submit() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
-    if (email.isEmpty || password.isEmpty) {
-      setState(() => _error = 'Введите email и пароль');
-      return;
-    }
-    if (_isRegister && password.length < 6) {
-      setState(() => _error = 'Пароль не короче 6 символов');
+    final validationError = validateAuthCredentials(
+      email: email,
+      password: password,
+      isRegistration: _isRegister,
+    );
+    if (validationError != null) {
+      setState(() => _error = validationError);
       return;
     }
 
@@ -45,46 +48,24 @@ class _LoginPageState extends State<LoginPage> {
       _error = null;
     });
     try {
+      final authRepository = ref.read(authRepositoryProvider);
       if (_isRegister) {
-        await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        await authRepository.register(
           email: email,
           password: password,
         );
       } else {
-        await FirebaseAuth.instance.signInWithEmailAndPassword(
+        await authRepository.signIn(
           email: email,
           password: password,
         );
       }
-    } on FirebaseAuthException catch (e) {
-      setState(() => _error = _mapError(e));
-    } catch (e) {
-      setState(() => _error = 'Ошибка: $e');
+    } on AuthFailure catch (error) {
+      if (mounted) setState(() => _error = error.message);
+    } catch (_) {
+      if (mounted) setState(() => _error = 'Не удалось выполнить авторизацию');
     } finally {
       if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  String _mapError(FirebaseAuthException e) {
-    switch (e.code) {
-      case 'invalid-email':
-        return 'Некорректный email';
-      case 'user-disabled':
-        return 'Пользователь отключён';
-      case 'user-not-found':
-      case 'wrong-password':
-      case 'invalid-credential':
-        return 'Неверный email или пароль';
-      case 'email-already-in-use':
-        return 'Этот email уже зарегистрирован';
-      case 'weak-password':
-        return 'Слишком слабый пароль (минимум 6 символов)';
-      case 'operation-not-allowed':
-        return 'Регистрация по email отключена в Firebase Console';
-      case 'network-request-failed':
-        return 'Нет сети. Проверьте подключение.';
-      default:
-        return e.message ?? 'Ошибка авторизации';
     }
   }
 

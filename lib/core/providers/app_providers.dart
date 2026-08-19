@@ -2,6 +2,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../database/app_database.dart';
+import '../models/auth_user.dart';
+import '../repositories/auth_repository.dart';
 import '../repositories/maintenance_repository.dart';
 import '../repositories/defect_act_repository.dart';
 import '../repositories/equipment_repository.dart';
@@ -25,8 +27,12 @@ final syncServiceProvider = FutureProvider<SyncService>((ref) async {
   return SyncService(db);
 });
 
-final authStateProvider = StreamProvider<User?>((ref) {
-  return FirebaseAuth.instance.authStateChanges();
+final authRepositoryProvider = Provider<AuthRepository>((ref) {
+  return FirebaseAuthRepository(FirebaseAuth.instance);
+});
+
+final authStateProvider = StreamProvider<AuthUser?>((ref) {
+  return ref.watch(authRepositoryProvider).authStateChanges();
 });
 
 final syncStatusProvider = StateProvider<SyncStatus>((ref) => SyncStatus.idle);
@@ -99,7 +105,7 @@ final appInitProvider = FutureProvider<void>((ref) async {
   await OperationalDataSeedService(db).seedIfNeeded();
   await EquipmentSeedService(db).seedIfNeeded();
 
-  final user = FirebaseAuth.instance.currentUser;
+  final user = ref.watch(authRepositoryProvider).currentUser;
   if (user == null) return;
 
   final sync = await ref.watch(syncServiceProvider.future);
