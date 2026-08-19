@@ -50,15 +50,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     try {
       final authRepository = ref.read(authRepositoryProvider);
       if (_isRegister) {
-        await authRepository.register(
-          email: email,
-          password: password,
-        );
+        await authRepository.register(email: email, password: password);
       } else {
-        await authRepository.signIn(
-          email: email,
-          password: password,
-        );
+        await authRepository.signIn(email: email, password: password);
       }
     } on AuthFailure catch (error) {
       if (mounted) setState(() => _error = error.message);
