@@ -7,12 +7,13 @@ import 'package:share_plus/share_plus.dart';
 import '../constants.dart';
 import '../database/app_database.dart';
 import 'sync_change_publisher.dart';
+import 'sync_service.dart';
 
 class ExportService {
-  ExportService(this._db, {SyncChangePublisher? sync}) : _sync = sync;
+  ExportService(this._db, {SyncService? sync}) : _sync = sync;
 
   final AppDatabase _db;
-  final SyncChangePublisher? _sync;
+  final SyncService? _sync;
 
   /// Pull from Firestore when online. Returns true if used cache only.
   Future<bool> ensureFreshData() async {
