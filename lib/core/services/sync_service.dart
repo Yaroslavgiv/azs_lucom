@@ -455,5 +455,4 @@ class SyncService implements SyncChangePublisher {
     }
     return uploaded;
   }
-
 }
