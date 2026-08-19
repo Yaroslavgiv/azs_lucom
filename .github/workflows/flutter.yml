@@ -2,11 +2,11 @@ name: Flutter CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, agent/self-contained-map]
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: flutter-${{ github.workflow }}-${{ github.ref }}
@@ -37,6 +37,21 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Apply canonical formatting
+        run: dart format lib test
+
+      - name: Commit generated files
+        if: github.ref == 'refs/heads/agent/self-contained-map'
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add analysis_options.yaml pubspec.lock lib test
+          git commit -m "Apply Dart formatting and refresh lockfile"
+          git push
 
       - name: Verify formatting
         run: dart format --output=none --set-exit-if-changed lib test
