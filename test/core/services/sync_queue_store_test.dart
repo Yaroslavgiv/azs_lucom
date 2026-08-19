@@ -29,37 +29,48 @@ void main() {
     expect(items.last.payload, isEmpty);
   });
 
-  test('coalesces repeated changes for the same local record', () async {
-    final database = await createTestDatabase();
-    addTearDown(database.close);
-    final queue = SyncQueueStore(database);
+  test(
+    'coalesces repeated changes for the same local record',
+    () async {
+      final database = await createTestDatabase();
+      addTearDown(database.close);
+      final queue = SyncQueueStore(database);
 
-    await queue.put(
-      entity: 'stations',
-      localPk: '1',
-      operation: 'upsert',
-      payload: {'name': 'Old'},
-    );
-    await queue.put(
-      entity: 'stations',
-      localPk: '1',
-      operation: 'upsert',
-      payload: {'name': 'Current'},
-    );
+      await queue.put(
+        entity: 'stations',
+        localPk: '1',
+        operation: 'upsert',
+        payload: {'name': 'Old'},
+      );
+      await queue.put(
+        entity: 'stations',
+        localPk: '1',
+        operation: 'upsert',
+        payload: {'name': 'Current'},
+      );
 
-    final items = await queue.nextBatch();
+      final items = await queue.nextBatch();
 
-    expect(items, hasLength(1));
-    expect(items.single.payload, {'name': 'Current'});
-  });
+      expect(items, hasLength(1));
+      expect(items.single.payload, {'name': 'Current'});
+    },
+  );
 
   test('removes only the acknowledged queue item', () async {
     final database = await createTestDatabase();
     addTearDown(database.close);
     final queue = SyncQueueStore(database);
 
-    await queue.put(entity: 'stations', localPk: '1', operation: 'delete');
-    await queue.put(entity: 'stations', localPk: '2', operation: 'delete');
+    await queue.put(
+      entity: 'stations',
+      localPk: '1',
+      operation: 'delete',
+    );
+    await queue.put(
+      entity: 'stations',
+      localPk: '2',
+      operation: 'delete',
+    );
     final first = (await queue.nextBatch()).first;
 
     await queue.remove(first.id);

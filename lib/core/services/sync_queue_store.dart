@@ -33,17 +33,13 @@ class SyncQueueStore {
     required String operation,
     Map<String, Object?> payload = const {},
   }) async {
-    await _database.db.insert(
-      'sync_queue',
-      {
-        'entity': entity,
-        'local_pk': localPk,
-        'op': operation,
-        'payload_json': jsonEncode(payload),
-        'created_at': DateTime.now().toIso8601String(),
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await _database.db.insert('sync_queue', {
+      'entity': entity,
+      'local_pk': localPk,
+      'op': operation,
+      'payload_json': jsonEncode(payload),
+      'created_at': DateTime.now().toIso8601String(),
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<List<SyncQueueItem>> nextBatch({int limit = 25}) async {
@@ -56,11 +52,7 @@ class SyncQueueStore {
   }
 
   Future<void> remove(int id) async {
-    await _database.db.delete(
-      'sync_queue',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    await _database.db.delete('sync_queue', where: 'id = ?', whereArgs: [id]);
   }
 
   SyncQueueItem _fromRow(Map<String, Object?> row) {
