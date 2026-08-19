@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:sqflite/sqflite.dart';
 
 import '../database/app_database.dart';
+import 'firestore_pull_service.dart';
 import 'sync_change_publisher.dart';
 import 'sync_logger.dart';
 import 'sync_map_store.dart';
@@ -27,6 +27,7 @@ class SyncService implements SyncChangePublisher {
     SyncMapStore? mapStore,
     SyncPushTransport? pushTransport,
     SyncQueueFlusher? queueFlusher,
+    FirestorePullService? pullService,
   }) : _db = database,
        _fs = firestore ?? FirebaseFirestore.instance,
        _connectivity = connectivity ?? Connectivity(),
@@ -45,6 +46,13 @@ class SyncService implements SyncChangePublisher {
                    mapStore ?? SyncMapStore(database),
                  ),
              logger: logger,
+           ),
+       _pullService =
+           pullService ??
+           FirestorePullService(
+             database,
+             firestore ?? FirebaseFirestore.instance,
+             mapStore ?? SyncMapStore(database),
            );
 
   final AppDatabase _db;
@@ -55,6 +63,7 @@ class SyncService implements SyncChangePublisher {
   final SyncPayloadResolver _payloadResolver;
   final SyncMapStore _mapStore;
   final SyncQueueFlusher _queueFlusher;
+  final FirestorePullService _pullService;
 
   bool _pulling = false;
 
@@ -128,144 +137,13 @@ class SyncService implements SyncChangePublisher {
     _pulling = true;
     try {
       await flushQueue();
-      await _pullStations();
-      await _pullStationInfo();
-      await _pullMaintenance();
-      await _replaceMappedCollection(
-        entity: SyncEntity.requests,
-        table: 'requests',
-        buildRow: (remoteId, data) => {
-          'station_number': data['station_number'],
-          'type': data['type'] ?? 'НЗ',
-          'request_type': data['request_type'] ?? '',
-          'description': data['description'] ?? '',
-          'date_created': data['date_created'] ?? '',
-          'status': data['status'] ?? 'open',
-          'close_comment': data['close_comment'],
-          'close_date': data['close_date'],
-        },
-      );
-      await _replaceMappedCollection(
-        entity: SyncEntity.stationEquipment,
-        table: 'station_equipment',
-        buildRow: (remoteId, data) => {
-          'station_number': data['station_number'],
-          'category': data['category'] ?? '',
-          'description': data['description'] ?? '',
-        },
-      );
-      await _replaceMappedCollection(
-        entity: SyncEntity.defectActs,
-        table: 'defect_acts',
-        buildRow: (remoteId, data) => {
-          'station_number': data['station_number'],
-          'created_at': data['created_at'] ?? '',
-          'equipment_category': data['equipment_category'] ?? '',
-          'equipment_name': data['equipment_name'] ?? '',
-          'assessment': data['assessment'] ?? '',
-          'declared_fault': data['declared_fault'] ?? '',
-          'faulty': data['faulty'] ?? '',
-          'conclusion': data['conclusion'] ?? '',
-          'rendered_text': data['rendered_text'] ?? '',
-        },
-      );
-      await _replaceMappedCollection(
-        entity: SyncEntity.equipmentOrderExports,
-        table: 'equipment_order_exports',
-        buildRow: (remoteId, data) => {
-          'region': data['region'] ?? '',
-          'export_date': data['export_date'] ?? '',
-          'request_id': data['request_id'] ?? 0,
-        },
-      );
-
-      await _db.setMeta('last_pull_at', DateTime.now().toIso8601String());
+      await _pullService.pullAll();
       return SyncStatus.synced;
     } catch (error, stackTrace) {
       _logger.error('Failed to pull Firestore data', error, stackTrace);
       return SyncStatus.error;
     } finally {
       _pulling = false;
-    }
-  }
-
-  Future<void> _pullStations() async {
-    final snap = await _fs.collection(SyncEntity.stations).get();
-    for (final doc in snap.docs) {
-      final d = doc.data();
-      await _db.db.insert('stations', {
-        'number': doc.id,
-        'name': d['name'] ?? '',
-        'address': d['address'] ?? '',
-        'lat': d['lat'],
-        'lon': d['lon'],
-        'region': d['region'] ?? '',
-        'geocode_status': (d['geocode_status'] as num?)?.toInt() ?? 0,
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
-      await _putMap(SyncEntity.stations, doc.id, doc.id);
-    }
-  }
-
-  Future<void> _pullStationInfo() async {
-    final snap = await _fs.collection(SyncEntity.stationInfo).get();
-    for (final doc in snap.docs) {
-      final d = doc.data();
-      await _db.db.insert('station_info', {
-        'station_number': doc.id,
-        'manager_contact': d['manager_contact'] ?? '',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
-      await _putMap(SyncEntity.stationInfo, doc.id, doc.id);
-    }
-  }
-
-  Future<void> _pullMaintenance() async {
-    final snap = await _fs.collection(SyncEntity.maintenance).get();
-    // Пустой cloud не должен затирать локальный seed/кеш.
-    if (snap.docs.isEmpty) return;
-
-    await _db.db.delete('maintenance');
-    await _mapStore.clearEntity(SyncEntity.maintenance);
-    for (final doc in snap.docs) {
-      final d = doc.data();
-      final station =
-          (d['station_number'] as String?) ?? doc.id.split('_').first;
-      final month =
-          (d['month'] as String?) ??
-          (doc.id.contains('_')
-              ? doc.id.substring(doc.id.indexOf('_') + 1)
-              : '');
-      if (station.isEmpty || month.isEmpty) continue;
-      final localPk = '${station}_$month';
-      await _db.db.insert('maintenance', {
-        'station_number': station,
-        'month': month,
-        'status': d['status'] ?? 'pending',
-        'date_done': d['date_done'],
-        'to_type': d['to_type'],
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
-      await _putMap(SyncEntity.maintenance, localPk, doc.id);
-    }
-  }
-
-  Future<void> _replaceMappedCollection({
-    required String entity,
-    required String table,
-    required Map<String, Object?> Function(
-      String remoteId,
-      Map<String, dynamic> data,
-    )
-    buildRow,
-  }) async {
-    final snap = await _fs.collection(entity).get();
-    // Пустой cloud не должен затирать локальный seed/кеш.
-    if (snap.docs.isEmpty) return;
-
-    await _db.db.delete(table);
-    await _mapStore.clearEntity(entity);
-    for (final doc in snap.docs) {
-      final row = buildRow(doc.id, doc.data());
-      final newId = await _db.db.insert(table, row);
-      await _putMap(entity, '$newId', doc.id);
     }
   }
 

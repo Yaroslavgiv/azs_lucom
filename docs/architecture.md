@@ -45,6 +45,10 @@ Push pipeline разделён на `SyncQueueFlusher` и `SyncPushTransport`. F
 transport — за облачные upsert/delete и remote ID. Неуспешный элемент остаётся
 в очереди, последующие элементы не отправляются до следующего запуска.
 
+Firestore pull изолирован в `FirestorePullService`: он отвечает за получение
+cloud snapshots, замену локальных mapped-коллекций и обновление `last_pull_at`.
+Пустая облачная коллекция не удаляет локальный seed/cache.
+
 ## Offline-first invariant
 
 Локальная операция считается успешной после транзакции SQLite. Отправка в
