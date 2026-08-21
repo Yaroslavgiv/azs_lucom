@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:ntk_map_view/ntk_map_view.dart';
 
 import '../../core/constants.dart';
 import '../../core/models/station.dart';
@@ -22,7 +21,7 @@ class MapPage extends ConsumerStatefulWidget {
 }
 
 class _MapPageState extends ConsumerState<MapPage> {
-  final _mapController = MapController();
+  final _controller = NtkMapController.init(null);
   bool _mapReady = false;
   bool _locating = false;
   bool _loadingMarkers = false;
@@ -31,26 +30,54 @@ class _MapPageState extends ConsumerState<MapPage> {
   String? _focusedRegion;
   int _spbCount = 0;
   int _novgorodCount = 0;
-  LatLng? _currentPosition;
-  double? _currentPositionAccuracy;
 
   List<Station> _stationsForRegion(String? region) {
     if (region == null) return _allStations;
     return _allStations.where((s) => s.region == region).toList();
   }
 
-  void _showStations(List<Station> stations) {
+  Future<void> _showStations(List<Station> stations) async {
+    await _controller.removeAllMarkers();
+    _controller.markers.clear();
+
+    final markers = <MapMarker>[];
+    for (final station in stations) {
+      final point = LatLng(station.lat!, station.lon!);
+      final markerTitle = station.name.isNotEmpty
+          ? '${station.name} (№${station.number})'
+          : '№${station.number}';
+      final iconUrl = resolveStationMarkerStyle(
+        maintenanceDone: _statuses?[station.number]?.isDone == true,
+        highlighted: highlightedStationNumbers.contains(station.number),
+      ).iconUrl;
+
+      markers.add(
+        MapMarker(
+          id: 'station_${station.number}',
+          point: point,
+          popup: MapMarkerPopup(title: markerTitle),
+          icon: MapMarkerIconModel(iconUrl: iconUrl, width: 30, height: 40),
+        ),
+      );
+
+      _controller.markers[point] = (_) {
+        if (mounted) {
+          showStationMarkerDialog(context, station: station);
+        }
+      };
+    }
+
+    for (final marker in markers) {
+      await _controller.addMarker(marker: marker, noCluster: true);
+    }
+
     if (stations.isEmpty) return;
 
-    _mapController.fitCamera(
-      CameraFit.bounds(
-        bounds: LatLngBounds.fromPoints(
-          stations
-              .map((station) => LatLng(station.lat!, station.lon!))
-              .toList(growable: false),
-        ),
-        padding: const EdgeInsets.all(48),
-        maxZoom: 15,
+    await _controller.goToBounds(
+      MapBounds(
+        points: stations
+            .map((station) => LatLng(station.lat!, station.lon!))
+            .toList(growable: false),
       ),
     );
   }
@@ -75,18 +102,18 @@ class _MapPageState extends ConsumerState<MapPage> {
         });
       }
 
-      _showStations(_stationsForRegion(_focusedRegion));
+      await _showStations(_stationsForRegion(_focusedRegion));
     } finally {
       _loadingMarkers = false;
     }
   }
 
-  void _focusRegion(String region) {
+  Future<void> _focusRegion(String region) async {
     if (!_mapReady || _loadingMarkers) return;
     setState(() {
       _focusedRegion = _focusedRegion == region ? null : region;
     });
-    _showStations(_stationsForRegion(_focusedRegion));
+    await _showStations(_stationsForRegion(_focusedRegion));
   }
 
   Future<void> _goToMyLocation() async {
@@ -95,13 +122,8 @@ class _MapPageState extends ConsumerState<MapPage> {
     try {
       final position = await LocationService.getCurrentPosition();
       final point = LatLng(position.latitude, position.longitude);
-      _mapController.move(point, 15);
-      if (mounted) {
-        setState(() {
-          _currentPosition = point;
-          _currentPositionAccuracy = position.accuracy;
-        });
-      }
+      await _controller.goToPointThenZoom(point, 15);
+      await _controller.updateCurrentPosition(point, position.accuracy / 1000);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -111,12 +133,6 @@ class _MapPageState extends ConsumerState<MapPage> {
     } finally {
       if (mounted) setState(() => _locating = false);
     }
-  }
-
-  @override
-  void dispose() {
-    _mapController.dispose();
-    super.dispose();
   }
 
   @override
@@ -176,45 +192,19 @@ class _MapPageState extends ConsumerState<MapPage> {
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(20),
                 ),
-                child: FlutterMap(
-                  mapController: _mapController,
-                  options: MapOptions(
-                    initialCenter: const LatLng(
-                      brigadeMapCenterLat,
-                      brigadeMapCenterLon,
-                    ),
-                    initialZoom: brigadeMapDefaultZoom,
-                    onMapReady: () async {
-                      if (mounted) setState(() => _mapReady = true);
-                      await ref.read(appInitProvider.future);
-                      await _loadMarkers();
-                    },
-                  ),
-                  children: [
-                    TileLayer(
-                      urlTemplate: mapTileUrl,
-                      userAgentPackageName: mapTileUserAgentPackageName,
-                    ),
-                    if (_currentPosition != null)
-                      CircleLayer(
-                        circles: [
-                          CircleMarker(
-                            point: _currentPosition!,
-                            radius: _currentPositionAccuracy ?? 0,
-                            useRadiusInMeter: true,
-                            color: AppColors.accent.withValues(alpha: 0.15),
-                            borderColor: AppColors.accent,
-                            borderStrokeWidth: 1.5,
-                          ),
-                        ],
-                      ),
-                    MarkerLayer(markers: _buildMarkers()),
-                    const RichAttributionWidget(
-                      attributions: [
-                        TextSourceAttribution('OpenStreetMap contributors'),
-                      ],
-                    ),
-                  ],
+                child: NtkMapView(
+                  mapController: _controller,
+                  mapPath: 'packages/ntk_map_view/lib/assets/map_mobile.html',
+                  styleUrl: mapStyleLight,
+                  onCreateEnd: (controller) async {
+                    if (mounted) setState(() => _mapReady = true);
+                    await controller.goToPointThenZoom(
+                      LatLng(brigadeMapCenterLat, brigadeMapCenterLon),
+                      brigadeMapDefaultZoom,
+                    );
+                    await ref.read(appInitProvider.future);
+                    await _loadMarkers();
+                  },
                 ),
               ),
               if (!_mapReady)
@@ -271,74 +261,6 @@ class _MapPageState extends ConsumerState<MapPage> {
         ),
       ],
     );
-  }
-
-  List<Marker> _buildMarkers() {
-    return _stationsForRegion(_focusedRegion)
-        .map((station) {
-          final point = LatLng(station.lat!, station.lon!);
-          final markerTitle = station.name.isNotEmpty
-              ? '${station.name} (№${station.number})'
-              : '№${station.number}';
-
-          return Marker(
-            point: point,
-            width: 150,
-            height: 68,
-            alignment: Alignment.bottomCenter,
-            child: Semantics(
-              button: true,
-              label: markerTitle,
-              child: GestureDetector(
-                onTap: () => showStationMarkerDialog(context, station: station),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.72),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        child: Text(
-                          markerTitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ),
-                    ),
-                    Image.network(
-                      _markerIconUrl(station),
-                      width: 30,
-                      height: 40,
-                      errorBuilder: (_, _, _) => const Icon(
-                        Icons.location_on,
-                        size: 40,
-                        color: AppColors.accent,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        })
-        .toList(growable: false);
-  }
-
-  String _markerIconUrl(Station station) {
-    return resolveStationMarkerStyle(
-      maintenanceDone: _statuses?[station.number]?.isDone == true,
-      highlighted: highlightedStationNumbers.contains(station.number),
-    ).iconUrl;
   }
 }
 

@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"/>
+    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+    <style>
+        html, body, #map {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            background: transparent;
+        }
+        .azs-marker {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+        }
+        .azs-marker-title {
+            background: rgba(0, 0, 0, 0.72);
+            color: #fff;
+            font: 10px/1.2 sans-serif;
+            padding: 2px 6px;
+            border-radius: 6px;
+            max-width: 150px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 2px;
+        }
+        .azs-user-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #4da3ff;
+            border: 2px solid #fff;
+            box-shadow: 0 0 0 1px rgba(77, 163, 255, 0.4);
+        }
+    </style>
+</head>
+<body>
+<div id="map"></div>
+<script>
+    const osmStyle = {
+        version: 8,
+        sources: {
+            osm: {
+                type: 'raster',
+                tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                tileSize: 256,
+                attribution: '© OpenStreetMap contributors'
+            }
+        },
+        layers: [{id: 'osm', type: 'raster', source: 'osm'}]
+    };
+
+    let map = null;
+    let markers = [];
+    let userMarker = null;
+
+    function post(payload) {
+        try {
+            NtkMapBridge.postMessage(JSON.stringify(payload));
+        } catch (e) {
+            console.log(JSON.stringify(payload));
+        }
+    }
+
+    function circlePolygon(lat, lon, radiusM, steps) {
+        const coords = [];
+        const earth = 6378137;
+        const latRad = lat * Math.PI / 180;
+        const count = steps || 64;
+        for (let i = 0; i <= count; i++) {
+            const angle = (i / count) * 2 * Math.PI;
+            const dx = radiusM * Math.cos(angle);
+            const dy = radiusM * Math.sin(angle);
+            const dLat = dy / earth;
+            const dLon = dx / (earth * Math.cos(latRad));
+            coords.push([
+                lon + dLon * 180 / Math.PI,
+                lat + dLat * 180 / Math.PI
+            ]);
+        }
+        return {type: 'Polygon', coordinates: [coords]};
+    }
+
+    async function _initMap(options) {
+        if (map) return;
+
+        let style = osmStyle;
+        if (options && options.styleUrl) {
+            try {
+                const response = await fetch(options.styleUrl);
+                if (response.ok) {
+                    style = await response.json();
+                }
+            } catch (e) {
+                console.log('style fallback', e);
+            }
+        }
+
+        map = new maplibregl.Map({
+            container: 'map',
+            style: style,
+            center: [options.lon || 30, options.lat || 55],
+            zoom: options.zoom || 4,
+            attributionControl: true
+        });
+
+        map.on('load', function () {
+            post({type: 'ready'});
+        });
+
+        map.on('click', function (event) {
+            post({
+                type: 'click',
+                lat: event.lngLat.lat,
+                lon: event.lngLat.lng
+            });
+        });
+    }
+
+    function _addMarker(marker) {
+        if (!map) return;
+
+        const el = document.createElement('div');
+        el.className = 'azs-marker';
+
+        if (marker.title) {
+            const title = document.createElement('div');
+            title.className = 'azs-marker-title';
+            title.textContent = marker.title;
+            el.appendChild(title);
+        }
+
+        const img = document.createElement('img');
+        img.width = marker.width || 30;
+        img.height = marker.height || 40;
+        img.alt = marker.title || '';
+        if (marker.iconUrl) {
+            img.src = marker.iconUrl;
+            img.onerror = function () {
+                img.style.display = 'none';
+            };
+        }
+        el.appendChild(img);
+
+        el.addEventListener('click', function (event) {
+            event.stopPropagation();
+            post({
+                type: 'point',
+                id: marker.id,
+                lat: marker.lat,
+                lon: marker.lon
+            });
+        });
+
+        const mapMarker = new maplibregl.Marker({element: el, anchor: 'bottom'})
+            .setLngLat([marker.lon, marker.lat])
+            .addTo(map);
+        markers.push(mapMarker);
+    }
+
+    function _clearAllMarkers() {
+        markers.forEach(function (item) {
+            item.remove();
+        });
+        markers = [];
+    }
+
+    function _goToBounds(points) {
+        if (!map || !points || !points.length) return;
+        const bounds = new maplibregl.LngLatBounds();
+        points.forEach(function (point) {
+            bounds.extend([point[1], point[0]]);
+        });
+        map.fitBounds(bounds, {padding: 48, maxZoom: 15, duration: 800});
+    }
+
+    function _goToPointThenZoom(lat, lon, zoom) {
+        if (!map) return;
+        map.flyTo({center: [lon, lat], zoom: zoom, duration: 1000});
+    }
+
+    function _updateCurrentPosition(lat, lon, accuracyKm) {
+        if (!map) return;
+
+        const radiusM = Math.max(Number(accuracyKm) * 1000, 12);
+        const data = {
+            type: 'Feature',
+            geometry: circlePolygon(lat, lon, radiusM),
+            properties: {}
+        };
+
+        if (map.getSource('current-pos')) {
+            map.getSource('current-pos').setData(data);
+        } else if (map.isStyleLoaded()) {
+            map.addSource('current-pos', {type: 'geojson', data: data});
+            map.addLayer({
+                id: 'current-pos-fill',
+                type: 'fill',
+                source: 'current-pos',
+                paint: {
+                    'fill-color': '#4da3ff',
+                    'fill-opacity': 0.15
+                }
+            });
+            map.addLayer({
+                id: 'current-pos-line',
+                type: 'line',
+                source: 'current-pos',
+                paint: {
+                    'line-color': '#4da3ff',
+                    'line-width': 1.5
+                }
+            });
+        }
+
+        if (userMarker) {
+            userMarker.setLngLat([lon, lat]);
+        } else {
+            const el = document.createElement('div');
+            el.className = 'azs-user-dot';
+            userMarker = new maplibregl.Marker({element: el})
+                .setLngLat([lon, lat])
+                .addTo(map);
+        }
+    }
+</script>
+</body>
+</html>

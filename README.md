@@ -17,12 +17,12 @@ Offline-first Flutter-приложение для учёта заявок, те�
 - авторизация через Firebase Authentication;
 - offline-first работа на базе SQLite;
 - синхронизация локальных изменений с Cloud Firestore;
-- карта АЗС на `flutter_map` и OpenStreetMap;
+- карта АЗС на вендорном `ntk_map_view` (MapLibre) и стиле Yandex Object Storage;
 - учёт заявок, ТО, оборудования и дефектных актов;
 - экспорт рабочих отчётов в XLSX;
 - создание DOCX по шаблону;
 - фильтрация по Санкт-Петербургу и Новгородской области;
-- безопасный запуск без локальных path-пакетов и без обязательного `.env`.
+- безопасный запуск без внешних path-пакетов и без обязательного `.env`.
 
 ## Архитектура
 
@@ -86,7 +86,7 @@ keystore, пароли и приватные `.env`-файлы в репозит
 ## Проверка качества
 
 ```bash
-dart format --output=none --set-exit-if-changed lib test
+dart format --output=none --set-exit-if-changed lib test packages
 flutter analyze --fatal-infos
 flutter test --coverage
 flutter build apk --debug
@@ -105,7 +105,7 @@ GitHub Actions выполняет эти команды для каждого pu
 | State / DI | Riverpod |
 | Local storage | SQLite / sqflite |
 | Cloud | Firebase Auth, Cloud Firestore |
-| Map | flutter_map, OpenStreetMap |
+| Map | ntk_map_view (vendored), MapLibre |
 | Reports | excel, archive, share_plus |
 | Integrations | DaData, external map applications |
 | Quality | flutter_lints, Flutter Test, GitHub Actions |

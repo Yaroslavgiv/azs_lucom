@@ -10,7 +10,7 @@ Flutter-приложение учёта заявок и ТО по АЗС (СПб
 - Облако: **Firebase** проект `my-home-chat-915a3` — Auth (email/password) + Cloud Firestore
 - Sync: `lib/core/services/sync_service.dart` (pull/push + `sync_queue` / `sync_map`)
 - Excel: пакет **`excel`** + **`share_plus`** (не Syncfusion, не csv)
-- Карта: `flutter_map` + OpenStreetMap, без локальных path-зависимостей
+- Карта: вендорный пакет `packages/ntk_map_view` (MapLibre в WebView)
 - Сеть: DaData Suggest (геокодинг) + Firestore sync
 
 ## Архитектура

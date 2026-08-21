@@ -1,0 +1,21 @@
+name: ntk_map_view
+description: Vendored MapLibre map widget for azs_app (WebView + MapLibre GL JS).
+publish_to: "none"
+version: 1.0.0
+
+environment:
+  sdk: ^3.11.1
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  latlong2: ^0.9.1
+  webview_flutter: ^4.10.0
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+
+flutter:
+  assets:
+    - lib/assets/map_mobile.html

@@ -26,7 +26,7 @@ Offline-first: sqflite-кеш + синхронизация с Firebase (`my-home
 - Отвечать пользователю по-русски
 - UI-строки — русский; код — английский
 - Регионы: `spb` / `novgorod`
-- Не трогать path-зависимость `ntk_map_view` без необходимости
+- Не трогать вендорный пакет `packages/ntk_map_view` без необходимости
 - Секреты DaData только из `.env`, не хардкодить
 - Firestore: UI не пишет напрямую — только через repositories → SyncService
 

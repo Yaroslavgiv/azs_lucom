@@ -27,7 +27,7 @@ async function main() {
     shell:
       'azs_app: предпочитай flutter analyze / test / pub get. Не force push, не коммить .env.',
     'security-review':
-      'Проверь DaData/.env в assets, утечки ключей, path dependency ntk_map_view.',
+      'Проверь DaData/.env в assets, утечки ключей, vendored ntk_map_view.',
     bugbot: 'Ревью diff azs_app с фокусом на offline DB и Excel export.',
   };
 

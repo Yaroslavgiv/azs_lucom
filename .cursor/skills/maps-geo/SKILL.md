@@ -22,5 +22,5 @@ description: >-
 - Стиль карты: Yandex Cloud URL из constants — не ломай без причины
 - Маркеры статуса ТО: зелёный/жёлтый — сохраняй семантику
 - Токены DaData только из `.env`
-- Path-пакет `ntk_map_view` — внешний; правки там согласовывать отдельно
+- Пакет `ntk_map_view` вендорится в `packages/ntk_map_view`; правки согласовывать отдельно
 - Навигация наружу: `url_launcher` deep links, не WebView-хаки без нужды
