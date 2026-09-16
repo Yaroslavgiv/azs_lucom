@@ -32,6 +32,12 @@ void main() {
       'status': 'open',
       'close_comment': null,
       'close_date': null,
+      'assignee_id': null,
+      'assignee_name': null,
+      'due_date': null,
+      'updated_by': null,
+      'updated_at': null,
+      'version': 1,
     });
   });
 

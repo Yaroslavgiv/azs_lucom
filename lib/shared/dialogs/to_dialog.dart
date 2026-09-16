@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:webviewimage/webviewimage.dart';
 
 import '../../core/providers/app_providers.dart';
+import '../../features/maintenance_report/maintenance_report_page.dart';
+import '../navigation/app_page_route.dart';
 import '../utils/date_format.dart';
 
 Future<void> showToDialog(
@@ -66,19 +68,13 @@ class _ToDialogBodyState extends ConsumerState<_ToDialogBody> {
   }
 
   Future<void> _markDone() async {
-    final maint = await ref.read(maintenanceRepositoryProvider.future);
-    await maint.markDone(widget.stationNumber);
-    ref.invalidate(stationsByRegionProvider);
-    ref.invalidate(maintenanceListProvider);
-    ref.read(mapRefreshProvider.notifier).state++;
     widget.onClose();
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('ТО по станции ${widget.stationNumber} отмечено'),
-        ),
-      );
-    }
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      AppPageRoute(
+        page: MaintenanceReportPage(stationNumber: widget.stationNumber),
+      ),
+    );
   }
 
   @override
@@ -116,14 +112,17 @@ class _ToDialogBodyState extends ConsumerState<_ToDialogBody> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Отметить выполнение ТО в текущем месяце?'),
+          const Text('Заполнить отчёт ТО и отправить руководителю на приёмку?'),
           const SizedBox(height: 12),
           Text(_lastToText ?? ''),
         ],
       ),
       actions: [
         TextButton(onPressed: widget.onClose, child: const Text('Отмена')),
-        FilledButton(onPressed: _markDone, child: const Text('Отметить ТО')),
+        FilledButton(
+          onPressed: _markDone,
+          child: const Text('Заполнить отчёт'),
+        ),
       ],
     );
   }

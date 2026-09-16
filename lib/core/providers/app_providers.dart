@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/station.dart';
+import '../models/user_profile.dart';
 import '../repositories/maintenance_repository.dart';
 import '../services/equipment_seed_service.dart';
 import '../services/operational_data_seed_service.dart';
@@ -17,17 +19,31 @@ final syncStatusProvider = StateProvider<SyncStatus>((ref) => SyncStatus.idle);
 /// Инкремент для перезагрузки маркеров на карте (например, после отметки ТО).
 final mapRefreshProvider = StateProvider<int>((ref) => 0);
 
+final currentUserProfileProvider = FutureProvider<UserProfile?>((ref) async {
+  final auth = ref.watch(authStateProvider).value;
+  if (auth == null) return null;
+  final repo = await ref.watch(userProfileRepositoryProvider.future);
+  final profile = await repo.getById(auth.id);
+  return profile ?? UserProfile.fallback(id: auth.id, email: auth.email);
+});
+
 final appInitProvider = FutureProvider<void>((ref) async {
+  final user = ref.watch(authRepositoryProvider).currentUser;
+  if (kIsWeb) {
+    await ref.watch(currentUserProfileProvider.future);
+    return;
+  }
+
   final db = await ref.watch(databaseProvider.future);
   final stations = await ref.watch(stationRepositoryProvider.future);
   await StationSeedService(db, stations).seedIfNeeded();
   await OperationalDataSeedService(db).seedIfNeeded();
   await EquipmentSeedService(db).seedIfNeeded();
 
-  final user = ref.watch(authRepositoryProvider).currentUser;
   if (user == null) return;
 
   final sync = await ref.watch(syncServiceProvider.future);
+  if (sync == null) return;
   ref.read(syncStatusProvider.notifier).state = SyncStatus.syncing;
   try {
     await sync.seedCloudIfEmpty();
@@ -43,6 +59,9 @@ final stationsByRegionProvider = FutureProvider.family<List<Station>, String>((
   region,
 ) async {
   await ref.watch(appInitProvider.future);
+  if (kIsWeb) {
+    return ref.watch(cloudDataServiceProvider).stations(region: region);
+  }
   final repo = await ref.watch(stationRepositoryProvider.future);
   return repo.getByRegion(region);
 });
@@ -76,6 +95,10 @@ final maintenanceListProvider =
 Future<SyncStatus> runManualSync(WidgetRef ref) async {
   ref.read(syncStatusProvider.notifier).state = SyncStatus.syncing;
   final sync = await ref.read(syncServiceProvider.future);
+  if (sync == null) {
+    ref.read(syncStatusProvider.notifier).state = SyncStatus.synced;
+    return SyncStatus.synced;
+  }
   try {
     await sync.seedCloudIfEmpty();
     final status = await sync.pullAll();

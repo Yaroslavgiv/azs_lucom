@@ -10,6 +10,28 @@ class StationRepository {
   final AppDatabase _db;
   final SyncChangePublisher? _sync;
 
+  Future<List<Station>> search(String query, {String? region}) async {
+    final needle = query.trim().toLowerCase();
+    final source = region == null ? await getAll() : await getByRegion(region);
+    if (needle.isEmpty) return source;
+    return source
+        .where(
+          (station) =>
+              station.number.toLowerCase().contains(needle) ||
+              station.name.toLowerCase().contains(needle) ||
+              station.address.toLowerCase().contains(needle),
+        )
+        .toList();
+  }
+
+  Future<List<Station>> getAll() async {
+    final rows = await _db.db.query(
+      'stations',
+      orderBy: 'region, CAST(number AS INTEGER)',
+    );
+    return rows.map(Station.fromMap).toList();
+  }
+
   Future<List<Station>> getByRegion(String region) async {
     final rows = await _db.db.query(
       'stations',

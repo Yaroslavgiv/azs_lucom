@@ -18,4 +18,7 @@ abstract final class SyncEntity {
   static const stationInfo = 'station_info';
   static const defectActs = 'defect_acts';
   static const equipmentOrderExports = 'equipment_order_exports';
+  static const users = 'users';
+  static const auditLog = 'audit_log';
+  static const maintenanceReports = 'maintenance_reports';
 }

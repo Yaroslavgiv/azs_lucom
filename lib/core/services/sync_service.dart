@@ -52,6 +52,7 @@ class SyncService implements SyncChangePublisher {
              database,
              firestore ?? FirebaseFirestore.instance,
              mapStore ?? SyncMapStore(database),
+             queueStore: queueStore ?? SyncQueueStore(database),
            ),
        _cloudSeeder =
            cloudSeeder ??

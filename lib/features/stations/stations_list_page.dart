@@ -81,29 +81,57 @@ class StationsListPage extends ConsumerWidget {
   }
 }
 
-class _StationList extends ConsumerWidget {
+class _StationList extends ConsumerStatefulWidget {
   const _StationList({required this.region});
 
   final String region;
 
+  @override
+  ConsumerState<_StationList> createState() => _StationListState();
+}
+
+class _StationListState extends ConsumerState<_StationList> {
+  String _query = '';
+
   void _openMaintenanceList(BuildContext context, bool done) {
     Navigator.of(context).push(
       AppPageRoute(
-        page: MaintenanceListPage(region: region, done: done),
+        page: MaintenanceListPage(region: widget.region, done: done),
       ),
     );
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(stationsByRegionProvider(region));
+  Widget build(BuildContext context) {
+    final async = ref.watch(stationsByRegionProvider(widget.region));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: TextField(
+            decoration: const InputDecoration(
+              labelText: 'Поиск по номеру или адресу',
+              prefixIcon: Icon(Icons.search),
+            ),
+            onChanged: (value) => setState(() => _query = value),
+          ),
+        ),
         Expanded(
           child: async.when(
             data: (stations) {
-              if (stations.isEmpty) {
+              final needle = _query.trim().toLowerCase();
+              final filtered = needle.isEmpty
+                  ? stations
+                  : stations
+                        .where(
+                          (station) =>
+                              station.number.toLowerCase().contains(needle) ||
+                              station.name.toLowerCase().contains(needle) ||
+                              station.address.toLowerCase().contains(needle),
+                        )
+                        .toList();
+              if (filtered.isEmpty) {
                 return const Center(
                   child: Text(
                     'Нет станций',
@@ -113,10 +141,10 @@ class _StationList extends ConsumerWidget {
               }
               return ListView.separated(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                itemCount: stations.length,
+                itemCount: filtered.length,
                 separatorBuilder: (_, _) => const SizedBox(height: 10),
                 itemBuilder: (ctx, i) {
-                  final s = stations[i];
+                  final s = filtered[i];
                   return StaggeredFadeIn(
                     index: i,
                     child: GlassCard(

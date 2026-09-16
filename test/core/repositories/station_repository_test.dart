@@ -51,4 +51,29 @@ void main() {
     expect(station?.geocodeStatus, 1);
     expect(await repository.getNeedingGeocode(), isEmpty);
   });
+
+  test('searches stations by number and address', () async {
+    final database = await openTestDatabase();
+    addTearDown(database.close);
+    final repository = StationRepository(database);
+    await repository.upsert(
+      Station(
+        number: '78172',
+        name: 'Пулково',
+        address: 'Пулковское шоссе',
+        region: 'spb',
+      ),
+    );
+    await repository.upsert(
+      Station(
+        number: '53001',
+        name: 'Новгород',
+        address: 'Большая Санкт-Петербургская',
+        region: 'novgorod',
+      ),
+    );
+
+    final found = await repository.search('пулков');
+    expect(found.map((station) => station.number), ['78172']);
+  });
 }

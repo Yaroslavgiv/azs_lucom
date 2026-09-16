@@ -14,7 +14,10 @@ server-side правила доступа.
 
 ## Firebase
 
-- Firestore Rules требуют `request.auth != null` для чтения и записи.
+- Firestore Rules проверяют роль из `users/{uid}`: специалист, руководитель, администратор.
+- Приёмка ТО выполняется Cloud Functions (`acceptMaintenance` / `returnMaintenance`) с записью `audit_log`.
+- Вложения отчётов ТО хранятся в Firebase Storage (`maintenance/{station}_{month}/`).
+- Саморегистрация в UI отключена: пользователей создаёт администратор.
 - Email/password errors преобразуются в безопасные пользовательские сообщения.
 - UI работает через `AuthRepository`, не через Firebase SDK напрямую.
 - Для production используются отдельные Firebase projects по окружениям.

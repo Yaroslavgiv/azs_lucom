@@ -55,6 +55,16 @@ class SyncQueueStore {
     await _database.db.delete('sync_queue', where: 'id = ?', whereArgs: [id]);
   }
 
+  Future<bool> hasPending(String entity) async {
+    final rows = await _database.db.query(
+      'sync_queue',
+      where: 'entity = ?',
+      whereArgs: [entity],
+      limit: 1,
+    );
+    return rows.isNotEmpty;
+  }
+
   SyncQueueItem _fromRow(Map<String, Object?> row) {
     return SyncQueueItem(
       id: row['id']! as int,

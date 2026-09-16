@@ -46,6 +46,12 @@ class SyncPayloadResolver {
       'status': row['status'],
       'close_comment': row['close_comment'],
       'close_date': row['close_date'],
+      'assignee_id': row['assignee_id'],
+      'assignee_name': row['assignee_name'],
+      'due_date': row['due_date'],
+      'updated_by': row['updated_by'],
+      'updated_at': row['updated_at'],
+      'version': row['version'] ?? 1,
     };
   }
 
@@ -69,6 +75,18 @@ class SyncPayloadResolver {
       'status': row['status'],
       'date_done': row['date_done'],
       'to_type': row['to_type'],
+      'assignee_id': row['assignee_id'],
+      'assignee_name': row['assignee_name'],
+      'due_date': row['due_date'],
+      'comment': row['comment'],
+      'report_json': row['report_json'],
+      'photo_paths': row['photo_paths'],
+      'updated_by': row['updated_by'],
+      'updated_at': row['updated_at'],
+      'submitted_at': row['submitted_at'],
+      'reviewed_by': row['reviewed_by'],
+      'review_comment': row['review_comment'],
+      'version': row['version'] ?? 1,
     };
   }
 
@@ -85,6 +103,11 @@ class SyncPayloadResolver {
       'station_number': row['station_number'],
       'category': row['category'],
       'description': row['description'],
+      'quantity': row['quantity'] ?? 1,
+      'serial_number': row['serial_number'] ?? '',
+      'condition': row['condition'] ?? 'Исправно',
+      'updated_by': row['updated_by'],
+      'updated_at': row['updated_at'],
     };
   }
 
@@ -126,6 +149,8 @@ class SyncPayloadResolver {
       'lon': row['lon'],
       'region': row['region'],
       'geocode_status': row['geocode_status'],
+      'updated_by': row['updated_by'],
+      'updated_at': row['updated_at'],
     };
   }
 }

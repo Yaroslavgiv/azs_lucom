@@ -9,18 +9,33 @@ class EquipmentItem {
     required this.stationNumber,
     required this.category,
     required this.description,
+    this.quantity = 1,
+    this.serialNumber = '',
+    this.condition = 'Исправно',
+    this.updatedBy,
+    this.updatedAt,
   });
 
   final int id;
   final String stationNumber;
   final String category;
   final String description;
+  final int quantity;
+  final String serialNumber;
+  final String condition;
+  final String? updatedBy;
+  final String? updatedAt;
 
   factory EquipmentItem.fromMap(Map<String, Object?> m) => EquipmentItem(
-    id: m['id'] as int,
+    id: (m['id'] as num?)?.toInt() ?? 0,
     stationNumber: m['station_number'] as String,
     category: m['category'] as String,
     description: (m['description'] as String?) ?? '',
+    quantity: (m['quantity'] as num?)?.toInt() ?? 1,
+    serialNumber: (m['serial_number'] as String?) ?? '',
+    condition: (m['condition'] as String?) ?? 'Исправно',
+    updatedBy: m['updated_by'] as String?,
+    updatedAt: m['updated_at'] as String?,
   );
 }
 
@@ -73,11 +88,20 @@ class StationInfoRepository {
     required String stationNumber,
     required String category,
     required String description,
+    int quantity = 1,
+    String serialNumber = '',
+    String condition = 'Исправно',
+    String? updatedBy,
   }) async {
     final id = await _db.db.insert('station_equipment', {
       'station_number': stationNumber,
       'category': category,
       'description': description,
+      'quantity': quantity,
+      'serial_number': serialNumber,
+      'condition': condition,
+      'updated_by': updatedBy,
+      'updated_at': DateTime.now().toIso8601String(),
     });
     final sync = _sync;
     if (sync != null) {

@@ -20,7 +20,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _passwordController = TextEditingController();
   bool _busy = false;
   bool _obscure = true;
-  bool _isRegister = false;
   String? _error;
 
   @override
@@ -36,7 +35,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final validationError = validateAuthCredentials(
       email: email,
       password: password,
-      isRegistration: _isRegister,
+      isRegistration: false,
     );
     if (validationError != null) {
       setState(() => _error = validationError);
@@ -48,12 +47,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       _error = null;
     });
     try {
-      final authRepository = ref.read(authRepositoryProvider);
-      if (_isRegister) {
-        await authRepository.register(email: email, password: password);
-      } else {
-        await authRepository.signIn(email: email, password: password);
-      }
+      await ref
+          .read(authRepositoryProvider)
+          .signIn(email: email, password: password);
     } on AuthFailure catch (error) {
       if (mounted) setState(() => _error = error.message);
     } catch (_) {
@@ -79,14 +75,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        _isRegister ? 'Регистрация' : 'Вход',
+                        'Вход',
                         style: Theme.of(context).textTheme.headlineSmall,
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        _isRegister
-                            ? 'Создайте аккаунт для синхронизации с облаком.'
-                            : 'Войдите, чтобы синхронизировать данные с облаком.',
+                        'Войдите в учётную запись, которую выдал администратор.',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: AppColors.textSecondary,
                         ),
@@ -135,28 +129,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             color: AppColors.accent,
                           ),
                         )
-                      else ...[
+                      else
                         AppPrimaryButton(
-                          label: _isRegister ? 'Зарегистрироваться' : 'Войти',
-                          icon: _isRegister
-                              ? Icons.person_add_alt_1
-                              : Icons.login,
+                          label: 'Войти',
+                          icon: Icons.login,
                           onPressed: _submit,
                         ),
-                        const SizedBox(height: 10),
-                        AppSecondaryButton(
-                          label: _isRegister
-                              ? 'Уже есть аккаунт — войти'
-                              : 'Нет аккаунта — зарегистрироваться',
-                          icon: _isRegister
-                              ? Icons.login
-                              : Icons.person_add_outlined,
-                          onPressed: () => setState(() {
-                            _isRegister = !_isRegister;
-                            _error = null;
-                          }),
-                        ),
-                      ],
                     ],
                   ),
                 ),

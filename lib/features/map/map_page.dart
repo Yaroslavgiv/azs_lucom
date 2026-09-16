@@ -3,9 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ntk_map_view/ntk_map_view.dart';
 
 import '../../core/constants.dart';
+import '../../core/domain/maintenance_lifecycle.dart';
+import '../../core/domain/request_status.dart';
+import '../../core/domain/time_period.dart';
 import '../../core/models/station.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/repositories/maintenance_repository.dart';
+import '../../core/repositories/request_repository.dart';
 import '../../core/services/location_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../shared/dialogs/station_marker_dialog.dart';
@@ -27,6 +31,7 @@ class _MapPageState extends ConsumerState<MapPage> {
   bool _loadingMarkers = false;
   List<Station> _allStations = [];
   Map<String, MaintenanceStatus>? _statuses;
+  Set<String> _attention = {};
   String? _focusedRegion;
   int _spbCount = 0;
   int _novgorodCount = 0;
@@ -47,8 +52,8 @@ class _MapPageState extends ConsumerState<MapPage> {
           ? '${station.name} (№${station.number})'
           : '№${station.number}';
       final iconUrl = resolveStationMarkerStyle(
-        maintenanceDone: _statuses?[station.number]?.isDone == true,
-        highlighted: highlightedStationNumbers.contains(station.number),
+        maintenanceAccepted: _statuses?[station.number]?.isDone == true,
+        needsAttention: _attention.contains(station.number),
       ).iconUrl;
 
       markers.add(
@@ -88,13 +93,32 @@ class _MapPageState extends ConsumerState<MapPage> {
     try {
       final stationsRepo = await ref.read(stationRepositoryProvider.future);
       final maintRepo = await ref.read(maintenanceRepositoryProvider.future);
+      final requestRepo = await ref.read(requestRepositoryProvider.future);
       final stations = await stationsRepo.getAllWithCoordinates();
       final statuses = await maintRepo.getAllStatusesForCurrentMonth();
+      final activeRequests = await requestRepo.list(
+        const RequestQuery(activeOnly: true),
+      );
+      final attention = <String>{};
+      for (final request in activeRequests) {
+        if (request.isCritical ||
+            request.status == RequestStatus.overdue ||
+            isDueDateOverdue(request.dueDate)) {
+          attention.add(request.stationNumber);
+        }
+      }
+      for (final entry in statuses.entries) {
+        if (entry.value.status == MaintenanceLifecycle.returned ||
+            isDueDateOverdue(entry.value.dueDate)) {
+          attention.add(entry.key);
+        }
+      }
 
       if (mounted) {
         setState(() {
           _allStations = stations;
           _statuses = statuses;
+          _attention = attention;
           _spbCount = stations.where((s) => s.region == regionSpb).length;
           _novgorodCount = stations
               .where((s) => s.region == regionNovgorod)

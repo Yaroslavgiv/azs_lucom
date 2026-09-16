@@ -34,9 +34,38 @@ void main() {
       where: 'id = ?',
       whereArgs: [id],
     );
-    expect(rows.single['status'], 'closed');
+    expect(rows.single['status'], 'done');
     expect(rows.single['close_comment'], 'Выполнено');
   });
+
+  test(
+    'assigns an executor and keeps the request in the active list',
+    () async {
+      final database = await openTestDatabase();
+      addTearDown(database.close);
+      await StationRepository(database).upsert(
+        Station(number: '78001', name: 'АЗС', address: '', region: 'spb'),
+      );
+      final repository = RequestRepository(database);
+      final id = await repository.add(
+        stationNumber: '78001',
+        requestType: 'Срочная заявка',
+        description: 'Датчик',
+      );
+
+      await repository.assign(
+        id: id,
+        assigneeId: 'u1',
+        assigneeName: 'А. Иванов',
+        dueDate: '2026-09-20',
+      );
+
+      final assigned = await repository.getAssignedTo('u1');
+      expect(assigned, hasLength(1));
+      expect(assigned.single.status, 'assigned');
+      expect(assigned.single.dueDate, '2026-09-20');
+    },
+  );
 
   test('publishes local changes through the sync abstraction', () async {
     final database = await openTestDatabase();

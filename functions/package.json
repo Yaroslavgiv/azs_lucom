@@ -1,0 +1,13 @@
+{
+  "name": "azs-service-functions",
+  "description": "Приёмка ТО, аудит и создание пользователей",
+  "engines": {
+    "node": "20"
+  },
+  "main": "index.js",
+  "private": true,
+  "dependencies": {
+    "firebase-admin": "^12.6.0",
+    "firebase-functions": "^6.1.0"
+  }
+}

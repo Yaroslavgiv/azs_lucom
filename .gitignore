@@ -45,6 +45,7 @@ serviceAccount*.json
 .pub/
 /build/
 /coverage/
+functions/node_modules/
 assets/*.xlsx
 tools/template_*.txt
 tools/w_t_concat.txt

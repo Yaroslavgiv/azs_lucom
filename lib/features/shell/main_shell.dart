@@ -4,6 +4,7 @@ import '../../shared/widgets/app_background.dart';
 import '../../shared/widgets/app_bottom_nav.dart';
 import '../export/export_page.dart';
 import '../map/map_page.dart';
+import '../my_work/my_work_page.dart';
 import '../stations/stations_list_page.dart';
 
 class MainShell extends StatefulWidget {
@@ -16,7 +17,12 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _index = 0;
 
-  static const _pages = [MapPage(), StationsListPage(), ExportPage()];
+  static const _pages = [
+    MapPage(),
+    StationsListPage(),
+    MyWorkPage(),
+    ExportPage(),
+  ];
 
   @override
   Widget build(BuildContext context) {

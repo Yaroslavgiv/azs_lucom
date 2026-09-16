@@ -15,10 +15,10 @@ enum StationMarkerStyle {
 }
 
 StationMarkerStyle resolveStationMarkerStyle({
-  required bool maintenanceDone,
-  required bool highlighted,
+  required bool maintenanceAccepted,
+  required bool needsAttention,
 }) {
-  if (maintenanceDone) return StationMarkerStyle.completed;
-  if (highlighted) return StationMarkerStyle.highlighted;
+  if (maintenanceAccepted) return StationMarkerStyle.completed;
+  if (needsAttention) return StationMarkerStyle.highlighted;
   return StationMarkerStyle.pending;
 }

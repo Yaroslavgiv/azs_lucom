@@ -4,18 +4,26 @@ import 'package:sqflite/sqflite.dart';
 import '../database/app_database.dart';
 import 'sync_change_publisher.dart';
 import 'sync_map_store.dart';
+import 'sync_queue_store.dart';
 
 class FirestorePullService {
-  const FirestorePullService(this._database, this._firestore, this._mapStore);
+  const FirestorePullService(
+    this._database,
+    this._firestore,
+    this._mapStore, {
+    SyncQueueStore? queueStore,
+  }) : _queueStore = queueStore;
 
   final AppDatabase _database;
   final FirebaseFirestore _firestore;
   final SyncMapStore _mapStore;
+  final SyncQueueStore? _queueStore;
 
   Future<void> pullAll() async {
     await _pullStations();
     await _pullStationInfo();
     await _pullMaintenance();
+    await _pullUsers();
     await _replaceMappedCollections();
     await _database.setMeta('last_pull_at', DateTime.now().toIso8601String());
   }
@@ -32,6 +40,8 @@ class FirestorePullService {
         'lon': data['lon'],
         'region': data['region'] ?? '',
         'geocode_status': (data['geocode_status'] as num?)?.toInt() ?? 0,
+        'updated_by': data['updated_by'],
+        'updated_at': data['updated_at']?.toString(),
       }, conflictAlgorithm: ConflictAlgorithm.replace);
       await _putMap(SyncEntity.stations, document.id, document.id);
     }
@@ -49,9 +59,36 @@ class FirestorePullService {
     }
   }
 
+  Future<void> _pullUsers() async {
+    late final QuerySnapshot<Map<String, dynamic>> snapshot;
+    try {
+      snapshot = await _firestore.collection(SyncEntity.users).get();
+    } catch (_) {
+      return;
+    }
+    if (snapshot.docs.isEmpty) return;
+    await _database.db.delete('users_cache');
+    for (final document in snapshot.docs) {
+      final data = document.data();
+      final regions = data['regions'];
+      final regionsText = regions is List
+          ? regions.join(',')
+          : (regions as String?) ?? 'spb,novgorod';
+      await _database.db.insert('users_cache', {
+        'id': document.id,
+        'email': data['email'] ?? '',
+        'display_name': data['display_name'] ?? data['displayName'] ?? '',
+        'role': data['role'] ?? 'specialist',
+        'regions': regionsText,
+        'disabled': data['disabled'] == true ? 1 : 0,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    }
+  }
+
   Future<void> _pullMaintenance() async {
     final snapshot = await _firestore.collection(SyncEntity.maintenance).get();
     if (snapshot.docs.isEmpty) return;
+    if (await _hasPending(SyncEntity.maintenance)) return;
 
     await _database.db.delete('maintenance');
     await _mapStore.clearEntity(SyncEntity.maintenance);
@@ -69,9 +106,23 @@ class FirestorePullService {
       await _database.db.insert('maintenance', {
         'station_number': stationNumber,
         'month': month,
-        'status': data['status'] ?? 'pending',
+        'status': data['status'] ?? 'planned',
         'date_done': data['date_done'],
         'to_type': data['to_type'],
+        'assignee_id': data['assignee_id'],
+        'assignee_name': data['assignee_name'],
+        'due_date': data['due_date'],
+        'comment': data['comment'],
+        'report_json': data['report_json'],
+        'photo_paths': data['photo_paths'] is List
+            ? (data['photo_paths'] as List).join(',')
+            : data['photo_paths'],
+        'updated_by': data['updated_by'],
+        'updated_at': data['updated_at']?.toString(),
+        'submitted_at': data['submitted_at']?.toString(),
+        'reviewed_by': data['reviewed_by'],
+        'review_comment': data['review_comment'],
+        'version': (data['version'] as num?)?.toInt() ?? 1,
       }, conflictAlgorithm: ConflictAlgorithm.replace);
       await _putMap(SyncEntity.maintenance, localPk, document.id);
     }
@@ -87,9 +138,15 @@ class FirestorePullService {
         'request_type': data['request_type'] ?? '',
         'description': data['description'] ?? '',
         'date_created': data['date_created'] ?? '',
-        'status': data['status'] ?? 'open',
+        'status': data['status'] ?? 'new',
         'close_comment': data['close_comment'],
         'close_date': data['close_date'],
+        'assignee_id': data['assignee_id'],
+        'assignee_name': data['assignee_name'],
+        'due_date': data['due_date'],
+        'updated_by': data['updated_by'],
+        'updated_at': data['updated_at']?.toString(),
+        'version': (data['version'] as num?)?.toInt() ?? 1,
       },
     );
     await _replaceMappedCollection(
@@ -99,6 +156,11 @@ class FirestorePullService {
         'station_number': data['station_number'],
         'category': data['category'] ?? '',
         'description': data['description'] ?? '',
+        'quantity': (data['quantity'] as num?)?.toInt() ?? 1,
+        'serial_number': data['serial_number'] ?? '',
+        'condition': data['condition'] ?? 'Исправно',
+        'updated_by': data['updated_by'],
+        'updated_at': data['updated_at']?.toString(),
       },
     );
     await _replaceMappedCollection(
@@ -138,6 +200,7 @@ class FirestorePullService {
   }) async {
     final snapshot = await _firestore.collection(entity).get();
     if (snapshot.docs.isEmpty) return;
+    if (await _hasPending(entity)) return;
 
     await _database.db.delete(table);
     await _mapStore.clearEntity(entity);
@@ -146,6 +209,12 @@ class FirestorePullService {
       final localId = await _database.db.insert(table, row);
       await _putMap(entity, '$localId', document.id);
     }
+  }
+
+  Future<bool> _hasPending(String entity) async {
+    final store = _queueStore;
+    if (store == null) return false;
+    return store.hasPending(entity);
   }
 
   Future<void> _putMap(String entity, String localId, String remoteId) {

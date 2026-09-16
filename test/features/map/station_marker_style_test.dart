@@ -3,28 +3,28 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('resolveStationMarkerStyle', () {
-    test('completed maintenance has priority over highlighting', () {
+    test('accepted maintenance is green even if attention is set', () {
       final style = resolveStationMarkerStyle(
-        maintenanceDone: true,
-        highlighted: true,
+        maintenanceAccepted: true,
+        needsAttention: true,
       );
 
       expect(style, StationMarkerStyle.completed);
     });
 
-    test('returns highlighted style for an unfinished priority station', () {
+    test('returns red style for unfinished station that needs attention', () {
       final style = resolveStationMarkerStyle(
-        maintenanceDone: false,
-        highlighted: true,
+        maintenanceAccepted: false,
+        needsAttention: true,
       );
 
       expect(style, StationMarkerStyle.highlighted);
     });
 
-    test('returns pending style for a regular unfinished station', () {
+    test('returns yellow style for planned maintenance', () {
       final style = resolveStationMarkerStyle(
-        maintenanceDone: false,
-        highlighted: false,
+        maintenanceAccepted: false,
+        needsAttention: false,
       );
 
       expect(style, StationMarkerStyle.pending);

@@ -25,6 +25,16 @@ final stationRequestsProvider =
       return repo.getOpenByStation(stationNumber);
     });
 
+final stationClosedRequestsProvider =
+    FutureProvider.family<List<RequestItem>, String>((
+      ref,
+      stationNumber,
+    ) async {
+      ref.watch(_stationRefreshProvider(stationNumber));
+      final repo = await ref.watch(requestRepositoryProvider.future);
+      return repo.getClosedByStation(stationNumber);
+    });
+
 Future<void> showNewRequestDialog(
   BuildContext context,
   WidgetRef ref,
@@ -177,8 +187,10 @@ Future<void> showEditRequestDialog(
             final ok = await showDialog<bool>(
               context: ctx,
               builder: (c) => AlertDialog(
-                title: const Text('Удалить заявку?'),
-                content: const Text('Заявка будет закрыта.'),
+                title: const Text('Закрыть заявку?'),
+                content: const Text(
+                  'Заявка будет закрыта и останется в архиве станции.',
+                ),
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.pop(c, false),
@@ -199,7 +211,7 @@ Future<void> showEditRequestDialog(
             }
           },
           child: const Text(
-            'Удалить заявку',
+            'Закрыть заявку',
             style: TextStyle(color: Colors.red),
           ),
         ),

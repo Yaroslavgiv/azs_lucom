@@ -1,11 +1,14 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/domain/user_role.dart';
 import 'core/providers/app_providers.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/login_page.dart';
 import 'features/shell/main_shell.dart';
+import 'features/web_shell/web_shell.dart';
 import 'shared/widgets/app_background.dart';
 
 class AzsApp extends ConsumerWidget {
@@ -39,7 +42,17 @@ class _AuthenticatedHome extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final init = ref.watch(appInitProvider);
     return init.when(
-      data: (_) => const MainShell(),
+      data: (_) {
+        final profile = ref.watch(currentUserProfileProvider).value;
+        final useWebShell =
+            kIsWeb ||
+            profile?.role == UserRole.manager ||
+            profile?.role == UserRole.admin;
+        if (useWebShell && profile?.role != UserRole.specialist) {
+          return const WebShell();
+        }
+        return const MainShell();
+      },
       loading: () => const _LoadingScreen(message: 'Загрузка…'),
       error: (error, _) => _ErrorScreen(message: 'Ошибка запуска: $error'),
     );

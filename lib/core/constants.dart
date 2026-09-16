@@ -21,20 +21,13 @@ const String regionLabelSpb = 'Санкт-Петербург';
 const String mapStyleLight =
     'https://storage.yandexcloud.net/eg-small-backet/map/lightmap.json';
 
-/// Номера АЗС с красным маркером на карте (приоритет над статусом ТО).
-const Set<String> highlightedStationNumbers = {
-  '78007',
-  '78054',
-  '78024',
-  '78040',
-  '78138',
-  '78001',
-  '78052',
-  '78159',
-  '78167',
-  '78168',
-  '78013',
-};
+const String requestTypeUrgent = 'Срочная заявка';
+
+const List<String> equipmentConditions = [
+  'Исправно',
+  'На проверке',
+  'Требует замены',
+];
 
 /// Центр Санкт-Петербурга (фокус на регион).
 const double spbMapCenterLat = 59.9386;

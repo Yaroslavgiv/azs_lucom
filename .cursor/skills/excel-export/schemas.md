@@ -15,7 +15,8 @@
 | description | requests.description |
 | date_created | requests.date_created |
 
-Фильтр: `status='open'`, регион in (`novgorod`,`spb`). Плоская таблица.
+Фильтр: активные статусы `new/assigned/in_progress/overdue/open`, регион in (`novgorod`,`spb`). Плоская таблица.
+Аддитивные колонки: `status`, `assignee_name`, `due_date`.
 
 ## ТО.xlsx — лист «ТО»
 
@@ -29,8 +30,10 @@
 | address | stations.address |
 | status | `выполнено YYYY-MM` или `не выполнено` |
 | date_done | maintenance.date_done |
+| assignee_name | maintenance.assignee_name |
+| result | `Принято` после приёмки |
 
-Месяц: текущий `YYYY-MM`. LEFT JOIN maintenance.
+Месяц: текущий `YYYY-MM`. LEFT JOIN maintenance. `done` и `accepted` считаются выполненными.
 
 ## оборудование.xlsx — лист «Оборудование»
 
@@ -48,7 +51,7 @@
 - Subtitle листа: `Дата выгрузки: YYYY-MM-DD`
 - Группы: `№ N — name` + address
 - Колонки: `Дата создания`, `Описание`
-- Фильтр: open + `request_type = 'Заявки с заказом оборудования'` + region
+- Фильтр: активные заявки + `request_type = 'Заявки с заказом оборудования'` + region
 - После успеха: insert `equipment_order_exports`, meta `equipment_orders_export_date_$region`
 
 Регион в имени: `Санкт-Петербург` | `Новгород`.

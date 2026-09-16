@@ -11,6 +11,7 @@ class AppBottomNav extends StatelessWidget {
   static const _items = [
     (Icons.map_outlined, Icons.map, 'Карта'),
     (Icons.local_gas_station_outlined, Icons.local_gas_station, 'Станции'),
+    (Icons.assignment_outlined, Icons.assignment, 'Работы'),
     (Icons.upload_file_outlined, Icons.upload_file, 'Экспорт'),
   ];
 

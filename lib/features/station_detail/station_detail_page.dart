@@ -59,6 +59,7 @@ class StationDetailPage extends ConsumerWidget {
     final stationAsync = ref.watch(_stationProvider(stationNumber));
     final maintText = ref.watch(_maintenanceInfoProvider(stationNumber));
     final requestsAsync = ref.watch(stationRequestsProvider(stationNumber));
+    final closedAsync = ref.watch(stationClosedRequestsProvider(stationNumber));
 
     return stationAsync.when(
       data: (station) {
@@ -144,7 +145,7 @@ class StationDetailPage extends ConsumerWidget {
                         Text(t, style: Theme.of(context).textTheme.bodyMedium),
                         const SizedBox(height: 12),
                         AppSecondaryButton(
-                          label: 'Отметить ТО',
+                          label: 'Отчёт ТО',
                           icon: Icons.build_circle_outlined,
                           onPressed: () async {
                             await showToDialog(
@@ -201,7 +202,8 @@ class StationDetailPage extends ConsumerWidget {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'от ${r.dateCreated}',
+                                      'от ${r.dateCreated} · ${r.statusLabel}'
+                                      '${r.assigneeName == null ? '' : ' · ${r.assigneeName}'}',
                                       style: Theme.of(
                                         context,
                                       ).textTheme.bodySmall,
@@ -221,6 +223,40 @@ class StationDetailPage extends ConsumerWidget {
                     'Ошибка: $e',
                     style: const TextStyle(color: AppColors.error),
                   ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Архив заявок',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 10),
+                closedAsync.when(
+                  data: (requests) {
+                    if (requests.isEmpty) {
+                      return const GlassCard(
+                        child: Text(
+                          'Закрытых заявок нет',
+                          style: TextStyle(color: AppColors.textSecondary),
+                        ),
+                      );
+                    }
+                    return Column(
+                      children: [
+                        for (final r in requests.take(10))
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: GlassCard(
+                              child: Text(
+                                '${r.requestType}: ${r.description}\n'
+                                'закрыта ${r.closeDate ?? r.dateCreated}',
+                              ),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, _) => const SizedBox.shrink(),
                 ),
               ],
             ),

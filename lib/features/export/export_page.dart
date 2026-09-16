@@ -51,7 +51,7 @@ class _ExportPageState extends ConsumerState<ExportPage> {
     setState(() => _busy = true);
     try {
       final sync = await ref.read(syncServiceProvider.future);
-      final usedCacheOnly = !await sync.isOnline();
+      final usedCacheOnly = sync == null || !await sync.isOnline();
       await fn();
       if (mounted) {
         final msg = usedCacheOnly
@@ -155,7 +155,35 @@ class _ExportPageState extends ConsumerState<ExportPage> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 8),
+                          FutureBuilder(
+                            future: ref.read(syncServiceProvider.future).then((
+                              sync,
+                            ) async {
+                              if (sync == null) return null;
+                              try {
+                                final db = await ref.read(
+                                  databaseProvider.future,
+                                );
+                                return await db.getMeta('last_pull_at');
+                              } catch (_) {
+                                return null;
+                              }
+                            }),
+                            builder: (context, snapshot) {
+                              final lastPull = snapshot.data;
+                              if (lastPull == null || lastPull.isEmpty) {
+                                return const SizedBox.shrink();
+                              }
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: Text(
+                                  'Данные обновлены: $lastPull',
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              );
+                            },
+                          ),
                           AppSecondaryButton(
                             label: 'Синхронизировать',
                             icon: Icons.sync,

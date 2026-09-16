@@ -1,18 +1,20 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:excel/excel.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../constants.dart';
 import '../database/app_database.dart';
+import '../domain/maintenance_lifecycle.dart';
+import '../domain/request_status.dart';
+import '../domain/time_period.dart';
 import 'sync_change_publisher.dart';
 import 'sync_service.dart';
 
 class ExportService {
-  ExportService(this._db, {SyncService? sync}) : _sync = sync;
+  ExportService({AppDatabase? db, SyncService? sync}) : _db = db, _sync = sync;
 
-  final AppDatabase _db;
+  final AppDatabase? _db;
   final SyncService? _sync;
 
   /// Pull from Firestore when online. Returns true if used cache only.
@@ -24,23 +26,19 @@ class ExportService {
     return false;
   }
 
-  String _currentMonth() {
-    final n = DateTime.now();
-    return '${n.year}-${n.month.toString().padLeft(2, '0')}';
-  }
+  String _currentMonth() => currentMonthIso();
 
-  String _today() {
-    final n = DateTime.now();
-    return '${n.year}-${n.month.toString().padLeft(2, '0')}-${n.day.toString().padLeft(2, '0')}';
-  }
+  String _today() => currentDateIso();
 
   Future<void> shareRequests() async {
     await ensureFreshData();
-    final rows = await _db.db.rawQuery('''
-      SELECT s.region, r.station_number, r.type, r.request_type, r.description, r.date_created
+    final database = _requireDb();
+    final rows = await database.db.rawQuery('''
+      SELECT s.region, r.station_number, r.type, r.request_type, r.description, r.date_created,
+        r.status, r.assignee_name, r.due_date
       FROM requests r
       JOIN stations s ON s.number = r.station_number
-      WHERE r.status = 'open' AND s.region IN ('novgorod', 'spb')
+      WHERE r.status IN (${RequestStatus.sqlActiveIn}) AND s.region IN ('novgorod', 'spb')
       ORDER BY s.region, r.station_number, r.date_created
     ''');
     await _shareExcel(
@@ -53,6 +51,9 @@ class ExportService {
         'request_type',
         'description',
         'date_created',
+        'status',
+        'assignee_name',
+        'due_date',
       ],
       rows: rows.isEmpty
           ? [
@@ -64,12 +65,17 @@ class ExportService {
 
   Future<void> shareMaintenance() async {
     await ensureFreshData();
+    final database = _requireDb();
     final month = _currentMonth();
-    final rows = await _db.db.rawQuery(
+    final rows = await database.db.rawQuery(
       '''
       SELECT s.region, s.number AS station_number, s.name, s.address,
-        CASE WHEN m.status = 'done' THEN 'выполнено ' || m.month ELSE 'не выполнено' END AS status,
-        m.date_done
+        CASE WHEN m.status IN (${MaintenanceLifecycle.sqlAcceptedIn}) THEN 'выполнено ' || m.month
+             WHEN m.status IS NULL THEN 'не выполнено'
+             ELSE m.status END AS status,
+        m.date_done, m.assignee_name,
+        CASE WHEN m.status IN (${MaintenanceLifecycle.sqlAcceptedIn}) THEN 'Принято'
+             ELSE '' END AS result
       FROM stations s
       LEFT JOIN maintenance m ON s.number = m.station_number AND m.month = ?
       WHERE s.region IN ('novgorod', 'spb')
@@ -87,6 +93,8 @@ class ExportService {
         'address',
         'status',
         'date_done',
+        'assignee_name',
+        'result',
       ],
       rows: rows.isEmpty
           ? [
@@ -99,7 +107,8 @@ class ExportService {
   /// Все оборудование по всем станциям, сгруппировано по станциям.
   Future<void> shareEquipment() async {
     await ensureFreshData();
-    final rows = await _db.db.rawQuery('''
+    final database = _requireDb();
+    final rows = await database.db.rawQuery('''
       SELECT s.region, s.number AS station_number, s.name, s.address,
         e.category, e.description
       FROM station_equipment e
@@ -143,7 +152,7 @@ class ExportService {
   /// Свежие заявки с заказом оборудования с даты последней выгрузки.
   Future<void> shareFreshEquipmentOrders(String region) async {
     await ensureFreshData();
-    final lastExportDate = await _db.getMeta(
+    final lastExportDate = await _requireDb().getMeta(
       equipmentOrdersExportDateMetaKey(region),
     );
     final rows = await _queryEquipmentOrderRequests(
@@ -177,12 +186,12 @@ class ExportService {
       args.add(sinceDate);
     }
 
-    return _db.db.rawQuery('''
+    return _requireDb().db.rawQuery('''
       SELECT r.id, s.number AS station_number, s.name, s.address,
         r.description, r.date_created
       FROM requests r
       JOIN stations s ON s.number = r.station_number
-      WHERE r.status = 'open'
+      WHERE r.status IN (${RequestStatus.sqlActiveIn})
         AND r.request_type = ?
         AND s.region = ?
         $dateFilter
@@ -195,9 +204,10 @@ class ExportService {
     String exportDate,
     List<Map<String, Object?>> rows,
   ) async {
+    final database = _requireDb();
     final sync = _sync;
     for (final row in rows) {
-      final id = await _db.db.insert('equipment_order_exports', {
+      final id = await database.db.insert('equipment_order_exports', {
         'region': region,
         'export_date': exportDate,
         'request_id': row['id'],
@@ -214,7 +224,37 @@ class ExportService {
         );
       }
     }
-    await _db.setMeta(equipmentOrdersExportDateMetaKey(region), exportDate);
+    await database.setMeta(
+      equipmentOrdersExportDateMetaKey(region),
+      exportDate,
+    );
+  }
+
+  Future<void> shareRows({
+    required String filename,
+    required String sheetName,
+    required List<Map<String, Object?>> rows,
+    required List<String> headers,
+    String emptyMessage = 'Нет данных',
+  }) async {
+    await _shareExcel(
+      filename: filename,
+      sheetName: sheetName,
+      headers: headers,
+      rows: rows.isEmpty
+          ? [
+              {'Сообщение': emptyMessage},
+            ]
+          : rows,
+    );
+  }
+
+  AppDatabase _requireDb() {
+    final database = _db;
+    if (database == null) {
+      throw StateError('Локальная база недоступна для этой выгрузки');
+    }
+    return database;
   }
 
   List<_ExportGroup> _groupEquipmentByStation(List<Map<String, Object?>> rows) {
@@ -397,11 +437,17 @@ class ExportService {
   Future<void> _writeAndShare(Excel excel, String filename) async {
     final bytes = excel.encode();
     if (bytes == null) return;
-
-    final dir = await getTemporaryDirectory();
-    final path = '${dir.path}/$filename';
-    await File(path).writeAsBytes(bytes);
-    await Share.shareXFiles([XFile(path)], text: filename);
+    await Share.shareXFiles(
+      [
+        XFile.fromData(
+          Uint8List.fromList(bytes),
+          mimeType:
+              'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          name: filename,
+        ),
+      ],
+      fileNameOverrides: [filename],
+    );
   }
 }
 
