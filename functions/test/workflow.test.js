@@ -9,19 +9,81 @@ const base = {
   commandKey: 'k1',
   baseRevision: 0,
   currentRevision: 0,
-  checklistComplete: true,
 };
 
-test('leader assigns a new request', () => {
+test('manual assignment is denied', () => {
   const result = applyTransition({
     ...base,
     currentStatus: 'created',
     action: 'assign',
     assigneeId: 'spec',
   });
+  assert.equal(result.ok, false);
+  assert.equal(result.denial, 'Назначение вручную недоступно');
+});
+
+test('specialist closes a request without review', () => {
+  const result = applyTransition({
+    ...base,
+    role: 'specialist',
+    actorId: 'spec',
+    assigneeId: 'spec',
+    currentStatus: 'in_progress',
+    action: 'complete',
+  });
   assert.equal(result.ok, true);
-  assert.equal(result.status, 'assigned');
-  assert.equal(result.legacyStatus, 'open');
+  assert.equal(result.status, 'closed');
+  assert.equal(result.legacyStatus, 'closed');
+});
+
+test('review rule blocks completion', () => {
+  const result = applyTransition({
+    ...base,
+    role: 'specialist',
+    actorId: 'spec',
+    assigneeId: 'spec',
+    currentStatus: 'in_progress',
+    action: 'complete',
+    requiresReview: true,
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.denial, 'Заявка требует проверки руководителя');
+});
+
+test('specialist records maintenance once', () => {
+  const done = applyTransition({
+    ...base,
+    kind: 'maintenance',
+    role: 'specialist',
+    actorId: 'spec',
+    assigneeId: 'spec',
+    currentStatus: 'not_done',
+    action: 'complete',
+  });
+  assert.equal(done.status, 'done');
+  assert.equal(done.legacyStatus, 'done');
+  const again = applyTransition({
+    ...base,
+    kind: 'maintenance',
+    role: 'specialist',
+    actorId: 'spec',
+    assigneeId: 'spec',
+    currentStatus: 'done',
+    action: 'complete',
+    commandKey: 'other',
+  });
+  assert.equal(again.idempotent, true);
+});
+
+test('legacy head can still accept', () => {
+  const result = applyTransition({
+    ...base,
+    currentStatus: 'on_review',
+    action: 'accept',
+    commandKey: 'accept-1',
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.status, 'accepted');
 });
 
 test('specialist cannot accept', () => {
@@ -29,6 +91,7 @@ test('specialist cannot accept', () => {
     ...base,
     role: 'specialist',
     actorId: 'spec',
+    assigneeId: 'spec',
     currentStatus: 'on_review',
     action: 'accept',
   });
@@ -52,6 +115,7 @@ test('same command key is idempotent', () => {
     action: 'start',
     lastCommandKey: 'k1',
     commandKey: 'k1',
+    assigneeId: 'spec',
   });
   assert.equal(result.idempotent, true);
   assert.equal(result.status, 'assigned');
@@ -60,9 +124,8 @@ test('same command key is idempotent', () => {
 test('stale revision is a conflict', () => {
   const result = applyTransition({
     ...base,
-    currentStatus: 'created',
-    action: 'assign',
-    assigneeId: 'spec',
+    currentStatus: 'on_review',
+    action: 'accept',
     baseRevision: 1,
     currentRevision: 2,
   });

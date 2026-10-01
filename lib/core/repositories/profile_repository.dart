@@ -30,6 +30,7 @@ class ProfileRepository {
       'user_id': subject.userId,
       'display_name': displayName,
       'role': appRoleCode(subject.role),
+      'manager_scope': managerScopeCode(subject.effectiveScope),
       'management_id': subject.managementId,
       'department_id': subject.departmentId,
       'crew_id': subject.crewId,
@@ -49,9 +50,10 @@ class ProfileRepository {
   }
 
   AccessSubject _subject(Map<String, Object?> row) {
-    return AccessSubject(
+    return subjectFromCodes(
       userId: row['user_id'] as String,
-      role: appRoleFromCode(row['role'] as String?) ?? AppRole.specialist,
+      roleCode: row['role'] as String?,
+      scopeCode: row['manager_scope'] as String?,
       managementId: row['management_id'] as String?,
       departmentId: row['department_id'] as String?,
       crewId: row['crew_id'] as String?,

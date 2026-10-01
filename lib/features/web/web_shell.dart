@@ -108,7 +108,11 @@ class _WebShellState extends ConsumerState<WebShell> {
                     for (final user in data.users)
                       ListTile(
                         title: Text(user.userId),
-                        subtitle: Text(appRoleLabel(user.role)),
+                        subtitle: Text(
+                          user.scope == null
+                              ? appRoleLabel(user.role)
+                              : '${appRoleLabel(user.role)} · ${managerScopeLabel(user.scope!)}',
+                        ),
                       ),
                     const Divider(),
                     const Text('Журнал аудита'),
@@ -151,7 +155,7 @@ class _Overview extends StatelessWidget {
       ('Просроченные', '${metrics.overdueRequests}'),
       ('Требуют внимания', '${metrics.attentionStations}'),
       ('ТО на проверке', '${metrics.maintenanceWaitingAcceptance}'),
-      ('ТО принято', '${metrics.maintenanceAccepted}'),
+      ('ТО выполнено', '${metrics.maintenanceAccepted}'),
     ];
     return Wrap(
       spacing: 12,

@@ -34,6 +34,7 @@ Future<void> createWorkflowTables(Database db) async {
       management_id TEXT,
       department_id TEXT,
       crew_id TEXT,
+      manager_scope TEXT,
       active INTEGER NOT NULL DEFAULT 1,
       contact TEXT NOT NULL DEFAULT '',
       fcm_token TEXT,
@@ -136,6 +137,17 @@ Future<void> createWorkflowTables(Database db) async {
       body TEXT NOT NULL DEFAULT '',
       created_at TEXT NOT NULL,
       read_at TEXT
+    )
+  ''');
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS contract_rules (
+      id TEXT PRIMARY KEY,
+      category TEXT NOT NULL,
+      duration_hours INTEGER,
+      requires_review INTEGER NOT NULL DEFAULT 0,
+      effective_from TEXT NOT NULL,
+      version INTEGER NOT NULL DEFAULT 1,
+      active INTEGER NOT NULL DEFAULT 1
     )
   ''');
   await db.execute('''
@@ -264,6 +276,28 @@ Future<void> migrateToWorkflowSchema(Database db) async {
     "UPDATE maintenance SET workflow_status = 'accepted' WHERE status = 'done' AND workflow_status = 'planned'",
   );
   await createWorkflowTables(db);
+}
+
+Future<void> migrateToServiceCycleSchema(Database db) async {
+  await _addColumn(db, 'stations', 'specialist_id', 'TEXT');
+  await _addColumn(
+    db,
+    'requests',
+    'requires_review',
+    'INTEGER NOT NULL DEFAULT 0',
+  );
+  await _addColumn(db, 'user_profiles', 'manager_scope', 'TEXT');
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS contract_rules (
+      id TEXT PRIMARY KEY,
+      category TEXT NOT NULL,
+      duration_hours INTEGER,
+      requires_review INTEGER NOT NULL DEFAULT 0,
+      effective_from TEXT NOT NULL,
+      version INTEGER NOT NULL DEFAULT 1,
+      active INTEGER NOT NULL DEFAULT 1
+    )
+  ''');
 }
 
 Future<void> _addColumn(

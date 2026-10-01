@@ -144,9 +144,10 @@ class SqlitePanelReader {
       ],
       users: [
         for (final row in users)
-          AccessSubject(
+          subjectFromCodes(
             userId: row['user_id'] as String,
-            role: appRoleFromCode(row['role'] as String?) ?? AppRole.specialist,
+            roleCode: row['role'] as String?,
+            scopeCode: row['manager_scope'] as String?,
             managementId: row['management_id'] as String?,
             departmentId: row['department_id'] as String?,
             crewId: row['crew_id'] as String?,
@@ -213,11 +214,10 @@ class FirestorePanelReader {
       ],
       users: [
         for (final doc in users.docs)
-          AccessSubject(
+          subjectFromCodes(
             userId: doc.id,
-            role:
-                appRoleFromCode(doc.data()['role'] as String?) ??
-                AppRole.specialist,
+            roleCode: doc.data()['role'] as String?,
+            scopeCode: doc.data()['manager_scope'] as String?,
             managementId: doc.data()['management_id'] as String?,
             departmentId: doc.data()['department_id'] as String?,
             crewId: doc.data()['crew_id'] as String?,

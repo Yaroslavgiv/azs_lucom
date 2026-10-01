@@ -11,31 +11,39 @@ enum WorkAction {
   returnForRework,
   cancel,
   resume,
+  complete,
 }
 
 enum RequestWorkflowStatus {
   created,
+  unassigned,
   assigned,
   inProgress,
   onReview,
   returned,
   accepted,
+  closed,
   cancelled,
 }
 
 enum MaintenanceWorkflowStatus {
+  notDone,
   planned,
   assigned,
   inProgress,
   onReview,
   returned,
   accepted,
+  done,
+  overdue,
 }
 
 String requestWorkflowCode(RequestWorkflowStatus status) {
   switch (status) {
     case RequestWorkflowStatus.created:
       return 'created';
+    case RequestWorkflowStatus.unassigned:
+      return 'unassigned';
     case RequestWorkflowStatus.assigned:
       return 'assigned';
     case RequestWorkflowStatus.inProgress:
@@ -46,6 +54,8 @@ String requestWorkflowCode(RequestWorkflowStatus status) {
       return 'returned';
     case RequestWorkflowStatus.accepted:
       return 'accepted';
+    case RequestWorkflowStatus.closed:
+      return 'closed';
     case RequestWorkflowStatus.cancelled:
       return 'cancelled';
   }
@@ -55,6 +65,8 @@ RequestWorkflowStatus? requestWorkflowFromCode(String? code) {
   switch (code) {
     case 'created':
       return RequestWorkflowStatus.created;
+    case 'unassigned':
+      return RequestWorkflowStatus.unassigned;
     case 'assigned':
       return RequestWorkflowStatus.assigned;
     case 'in_progress':
@@ -65,6 +77,8 @@ RequestWorkflowStatus? requestWorkflowFromCode(String? code) {
       return RequestWorkflowStatus.returned;
     case 'accepted':
       return RequestWorkflowStatus.accepted;
+    case 'closed':
+      return RequestWorkflowStatus.closed;
     case 'cancelled':
       return RequestWorkflowStatus.cancelled;
     default:
@@ -76,6 +90,8 @@ String requestWorkflowLabel(String code) {
   switch (code) {
     case 'created':
       return 'Новая';
+    case 'unassigned':
+      return 'Без исполнителя';
     case 'assigned':
       return 'Назначена';
     case 'in_progress':
@@ -86,6 +102,8 @@ String requestWorkflowLabel(String code) {
       return 'Возвращена';
     case 'accepted':
       return 'Принята';
+    case 'closed':
+      return 'Закрыта';
     case 'cancelled':
       return 'Отменена';
     default:
@@ -95,6 +113,8 @@ String requestWorkflowLabel(String code) {
 
 String maintenanceWorkflowCode(MaintenanceWorkflowStatus status) {
   switch (status) {
+    case MaintenanceWorkflowStatus.notDone:
+      return 'not_done';
     case MaintenanceWorkflowStatus.planned:
       return 'planned';
     case MaintenanceWorkflowStatus.assigned:
@@ -107,11 +127,17 @@ String maintenanceWorkflowCode(MaintenanceWorkflowStatus status) {
       return 'returned';
     case MaintenanceWorkflowStatus.accepted:
       return 'accepted';
+    case MaintenanceWorkflowStatus.done:
+      return 'done';
+    case MaintenanceWorkflowStatus.overdue:
+      return 'overdue';
   }
 }
 
 MaintenanceWorkflowStatus? maintenanceWorkflowFromCode(String? code) {
   switch (code) {
+    case 'not_done':
+      return MaintenanceWorkflowStatus.notDone;
     case 'planned':
       return MaintenanceWorkflowStatus.planned;
     case 'assigned':
@@ -124,6 +150,10 @@ MaintenanceWorkflowStatus? maintenanceWorkflowFromCode(String? code) {
       return MaintenanceWorkflowStatus.returned;
     case 'accepted':
       return MaintenanceWorkflowStatus.accepted;
+    case 'done':
+      return MaintenanceWorkflowStatus.done;
+    case 'overdue':
+      return MaintenanceWorkflowStatus.overdue;
     default:
       return null;
   }
@@ -131,8 +161,9 @@ MaintenanceWorkflowStatus? maintenanceWorkflowFromCode(String? code) {
 
 String maintenanceWorkflowLabel(String code) {
   switch (code) {
+    case 'not_done':
     case 'planned':
-      return 'Запланировано';
+      return 'Не выполнено';
     case 'assigned':
       return 'Назначено';
     case 'in_progress':
@@ -142,21 +173,27 @@ String maintenanceWorkflowLabel(String code) {
     case 'returned':
       return 'Возвращено';
     case 'accepted':
-      return 'Принято';
+    case 'done':
+      return 'Выполнено';
+    case 'overdue':
+      return 'Просрочено';
     default:
       return code;
   }
 }
 
 String legacyRequestStatus(String workflowCode) {
-  if (workflowCode == 'accepted' || workflowCode == 'cancelled') {
+  if (workflowCode == 'accepted' ||
+      workflowCode == 'closed' ||
+      workflowCode == 'cancelled') {
     return 'closed';
   }
   return 'open';
 }
 
 String legacyMaintenanceStatus(String workflowCode) {
-  return workflowCode == 'accepted' ? 'done' : 'pending';
+  if (workflowCode == 'accepted' || workflowCode == 'done') return 'done';
+  return 'pending';
 }
 
 class WorkCommandResult {
@@ -185,8 +222,6 @@ class WorkCommandResult {
 }
 
 const _leaderActions = {
-  WorkAction.assign,
-  WorkAction.reassign,
   WorkAction.accept,
   WorkAction.returnForRework,
   WorkAction.cancel,
@@ -196,6 +231,7 @@ const _specialistActions = {
   WorkAction.start,
   WorkAction.submit,
   WorkAction.resume,
+  WorkAction.complete,
 };
 
 WorkCommandResult applyWorkCommand({
@@ -209,7 +245,7 @@ WorkCommandResult applyWorkCommand({
   String? comment,
   String? assigneeId,
   bool assignedToActor = false,
-  bool checklistComplete = true,
+  bool requiresReview = false,
 }) {
   if (!canReadStation(actor, station, assignedToActor: assignedToActor)) {
     return const WorkCommandResult.denied('Нет доступа к объекту');
@@ -217,6 +253,13 @@ WorkCommandResult applyWorkCommand({
 
   if (lastCommandKey != null && lastCommandKey == commandKey) {
     return WorkCommandResult.replay(currentStatus);
+  }
+
+  if (action == WorkAction.assign || action == WorkAction.reassign) {
+    return const WorkCommandResult.denied('Назначение вручную недоступно');
+  }
+  if (kind == WorkKind.maintenance && currentStatus == 'overdue') {
+    return const WorkCommandResult.denied('Месяц закрыт как просроченный');
   }
 
   final next = _nextStatus(kind: kind, current: currentStatus, action: action);
@@ -242,14 +285,11 @@ WorkCommandResult applyWorkCommand({
       (comment == null || comment.trim().isEmpty)) {
     return const WorkCommandResult.denied('Возврат требует комментарий');
   }
-  if (action == WorkAction.assign || action == WorkAction.reassign) {
-    if (assigneeId == null || assigneeId.isEmpty) {
-      return const WorkCommandResult.denied('Укажите исполнителя');
-    }
-  }
-  if (action == WorkAction.submit && !checklistComplete) {
+  if (action == WorkAction.complete &&
+      kind == WorkKind.request &&
+      requiresReview) {
     return const WorkCommandResult.denied(
-      'Заполните обязательные пункты чек-листа',
+      'Заявка требует проверки руководителя',
     );
   }
   if (action == WorkAction.cancel && kind != WorkKind.request) {
@@ -267,7 +307,17 @@ String? _nextStatus({
   if (kind == WorkKind.request) {
     return _requestTransitions[current]?[action];
   }
-  return _maintenanceTransitions[current]?[action];
+  if (action != WorkAction.complete) return null;
+  const open = {
+    'not_done',
+    'planned',
+    'assigned',
+    'in_progress',
+    'on_review',
+    'returned',
+  };
+  if (open.contains(current)) return 'done';
+  return null;
 }
 
 bool _isSameOutcome({
@@ -275,9 +325,10 @@ bool _isSameOutcome({
   required String current,
   required WorkAction action,
 }) {
-  if (action == WorkAction.accept &&
-      (current == 'accepted' || current == 'cancelled')) {
-    return current == 'accepted';
+  if (action == WorkAction.accept && current == 'accepted') return true;
+  if (action == WorkAction.complete &&
+      (current == 'done' || current == 'accepted' || current == 'closed')) {
+    return true;
   }
   if (action == WorkAction.submit && current == 'on_review') return true;
   if (action == WorkAction.start && current == 'in_progress') return true;
@@ -285,12 +336,17 @@ bool _isSameOutcome({
 }
 
 const _requestTransitions = <String, Map<WorkAction, String>>{
-  'created': {WorkAction.assign: 'assigned', WorkAction.cancel: 'cancelled'},
-  'assigned': {
+  'unassigned': {WorkAction.cancel: 'cancelled'},
+  'created': {
     WorkAction.start: 'in_progress',
-    WorkAction.reassign: 'assigned',
+    WorkAction.complete: 'closed',
+    WorkAction.cancel: 'cancelled',
   },
-  'in_progress': {WorkAction.submit: 'on_review'},
+  'assigned': {WorkAction.start: 'in_progress', WorkAction.complete: 'closed'},
+  'in_progress': {
+    WorkAction.submit: 'on_review',
+    WorkAction.complete: 'closed',
+  },
   'on_review': {
     WorkAction.accept: 'accepted',
     WorkAction.returnForRework: 'returned',
@@ -298,23 +354,7 @@ const _requestTransitions = <String, Map<WorkAction, String>>{
   'returned': {
     WorkAction.resume: 'in_progress',
     WorkAction.submit: 'on_review',
-  },
-};
-
-const _maintenanceTransitions = <String, Map<WorkAction, String>>{
-  'planned': {WorkAction.assign: 'assigned'},
-  'assigned': {
-    WorkAction.start: 'in_progress',
-    WorkAction.reassign: 'assigned',
-  },
-  'in_progress': {WorkAction.submit: 'on_review'},
-  'on_review': {
-    WorkAction.accept: 'accepted',
-    WorkAction.returnForRework: 'returned',
-  },
-  'returned': {
-    WorkAction.submit: 'on_review',
-    WorkAction.resume: 'in_progress',
+    WorkAction.complete: 'closed',
   },
 };
 
@@ -324,9 +364,8 @@ bool isOverdue({
   required DateTime now,
 }) {
   if (dueAt == null) return false;
-  if (workflowStatus == 'accepted' || workflowStatus == 'cancelled') {
-    return false;
-  }
+  const closed = {'accepted', 'cancelled', 'closed', 'done'};
+  if (closed.contains(workflowStatus)) return false;
   return !now.isBefore(dueAt);
 }
 

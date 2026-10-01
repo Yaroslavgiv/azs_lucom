@@ -1,18 +1,69 @@
-enum AppRole { specialist, manager, departmentHead, managementHead, admin }
+enum AppRole { specialist, manager, admin }
 
-AppRole? appRoleFromCode(String? code) {
+enum ManagerScope { department, management }
+
+class DecodedRole {
+  const DecodedRole({required this.role, this.scope});
+
+  final AppRole role;
+  final ManagerScope? scope;
+}
+
+/// `department_head` и `management_head` остаются только как старые коды профиля.
+DecodedRole? decodeRole(
+  String? code, {
+  String? scopeCode,
+  String? departmentId,
+}) {
   switch (code) {
     case 'specialist':
-      return AppRole.specialist;
-    case 'manager':
-      return AppRole.manager;
-    case 'department_head':
-      return AppRole.departmentHead;
-    case 'management_head':
-      return AppRole.managementHead;
+      return const DecodedRole(role: AppRole.specialist);
     case 'admin':
-      return AppRole.admin;
+      return const DecodedRole(role: AppRole.admin);
+    case 'department_head':
+      return const DecodedRole(
+        role: AppRole.manager,
+        scope: ManagerScope.department,
+      );
+    case 'management_head':
+      return const DecodedRole(
+        role: AppRole.manager,
+        scope: ManagerScope.management,
+      );
+    case 'manager':
+      return DecodedRole(
+        role: AppRole.manager,
+        scope:
+            managerScopeFromCode(scopeCode) ??
+            ((departmentId != null && departmentId.isNotEmpty)
+                ? ManagerScope.department
+                : ManagerScope.management),
+      );
     default:
+      return null;
+  }
+}
+
+AppRole? appRoleFromCode(String? code) => decodeRole(code)?.role;
+
+ManagerScope? managerScopeFromCode(String? code) {
+  switch (code) {
+    case 'department':
+      return ManagerScope.department;
+    case 'management':
+      return ManagerScope.management;
+    default:
+      return null;
+  }
+}
+
+String? managerScopeCode(ManagerScope? scope) {
+  switch (scope) {
+    case ManagerScope.department:
+      return 'department';
+    case ManagerScope.management:
+      return 'management';
+    case null:
       return null;
   }
 }
@@ -23,10 +74,6 @@ String appRoleCode(AppRole role) {
       return 'specialist';
     case AppRole.manager:
       return 'manager';
-    case AppRole.departmentHead:
-      return 'department_head';
-    case AppRole.managementHead:
-      return 'management_head';
     case AppRole.admin:
       return 'admin';
   }
@@ -38,12 +85,17 @@ String appRoleLabel(AppRole role) {
       return 'Специалист';
     case AppRole.manager:
       return 'Руководитель';
-    case AppRole.departmentHead:
-      return 'Начальник отдела';
-    case AppRole.managementHead:
-      return 'Начальник управления';
     case AppRole.admin:
       return 'Администратор';
+  }
+}
+
+String managerScopeLabel(ManagerScope scope) {
+  switch (scope) {
+    case ManagerScope.department:
+      return 'отдел';
+    case ManagerScope.management:
+      return 'управление';
   }
 }
 
@@ -51,6 +103,7 @@ class AccessSubject {
   const AccessSubject({
     required this.userId,
     required this.role,
+    this.scope,
     this.managementId,
     this.departmentId,
     this.crewId,
@@ -59,15 +112,47 @@ class AccessSubject {
 
   final String userId;
   final AppRole role;
+  final ManagerScope? scope;
   final String? managementId;
   final String? departmentId;
   final String? crewId;
   final bool active;
 
-  bool get isLeader =>
-      role == AppRole.manager ||
-      role == AppRole.departmentHead ||
-      role == AppRole.managementHead;
+  bool get isLeader => role == AppRole.manager;
+
+  ManagerScope? get effectiveScope {
+    if (role != AppRole.manager) return null;
+    if (scope != null) return scope;
+    if (departmentId != null && departmentId!.isNotEmpty) {
+      return ManagerScope.department;
+    }
+    return ManagerScope.management;
+  }
+}
+
+AccessSubject subjectFromCodes({
+  required String userId,
+  String? roleCode,
+  String? scopeCode,
+  String? managementId,
+  String? departmentId,
+  String? crewId,
+  bool active = true,
+}) {
+  final decoded = decodeRole(
+    roleCode,
+    scopeCode: scopeCode,
+    departmentId: departmentId,
+  );
+  return AccessSubject(
+    userId: userId,
+    role: decoded?.role ?? AppRole.specialist,
+    scope: decoded?.scope,
+    managementId: managementId,
+    departmentId: departmentId,
+    crewId: crewId,
+    active: active,
+  );
 }
 
 class OrgStation {
@@ -77,6 +162,7 @@ class OrgStation {
     this.departmentId,
     this.crewId,
     this.region,
+    this.specialistId,
   });
 
   final String number;
@@ -84,6 +170,7 @@ class OrgStation {
   final String? departmentId;
   final String? crewId;
   final String? region;
+  final String? specialistId;
 }
 
 bool canReadStation(
@@ -95,17 +182,17 @@ bool canReadStation(
   switch (actor.role) {
     case AppRole.admin:
       return true;
-    case AppRole.managementHead:
-      return _same(actor.managementId, station.managementId);
-    case AppRole.departmentHead:
-      return _same(actor.departmentId, station.departmentId);
     case AppRole.manager:
-      if (actor.departmentId != null && actor.departmentId!.isNotEmpty) {
+      if (actor.effectiveScope == ManagerScope.department) {
         return _same(actor.departmentId, station.departmentId);
       }
       return _same(actor.managementId, station.managementId);
     case AppRole.specialist:
       if (assignedToActor) return true;
+      final responsible = station.specialistId;
+      if (responsible != null && responsible.isNotEmpty) {
+        return responsible == actor.userId;
+      }
       return _same(actor.crewId, station.crewId);
   }
 }

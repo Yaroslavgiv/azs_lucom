@@ -1,28 +1,23 @@
 const requestTransitions = {
-  created: { assign: 'assigned', cancel: 'cancelled' },
-  assigned: { start: 'in_progress', reassign: 'assigned' },
-  in_progress: { submit: 'on_review' },
+  unassigned: { cancel: 'cancelled' },
+  created: { start: 'in_progress', complete: 'closed', cancel: 'cancelled' },
+  assigned: { start: 'in_progress', complete: 'closed' },
+  in_progress: { submit: 'on_review', complete: 'closed' },
   on_review: { accept: 'accepted', returnForRework: 'returned' },
-  returned: { resume: 'in_progress', submit: 'on_review' },
+  returned: { resume: 'in_progress', submit: 'on_review', complete: 'closed' },
 };
 
-const maintenanceTransitions = {
-  planned: { assign: 'assigned' },
-  assigned: { start: 'in_progress', reassign: 'assigned' },
-  in_progress: { submit: 'on_review' },
-  on_review: { accept: 'accepted', returnForRework: 'returned' },
-  returned: { resume: 'in_progress', submit: 'on_review' },
-};
-
-const leaderRoles = new Set(['manager', 'department_head', 'management_head']);
-const leaderActions = new Set([
-  'assign',
-  'reassign',
-  'accept',
-  'returnForRework',
-  'cancel',
+const maintenanceOpen = new Set([
+  'not_done',
+  'planned',
+  'assigned',
+  'in_progress',
+  'on_review',
+  'returned',
 ]);
-const specialistActions = new Set(['start', 'submit', 'resume']);
+
+const leaderActions = new Set(['accept', 'returnForRework', 'cancel']);
+const specialistActions = new Set(['start', 'submit', 'resume', 'complete']);
 
 function redactLog(message) {
   return String(message)
@@ -34,45 +29,76 @@ function redactLog(message) {
     .replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, '[redacted]');
 }
 
+function normalizeRole(role) {
+  if (role === 'department_head' || role === 'management_head' || role === 'manager') {
+    return 'manager';
+  }
+  return role;
+}
+
 function legacyRequestStatus(status) {
-  return status === 'accepted' || status === 'cancelled' ? 'closed' : 'open';
+  return status === 'accepted' || status === 'closed' || status === 'cancelled'
+    ? 'closed'
+    : 'open';
 }
 
 function legacyMaintenanceStatus(status) {
-  return status === 'accepted' ? 'done' : 'pending';
+  return status === 'accepted' || status === 'done' ? 'done' : 'pending';
+}
+
+function nextStatus(input) {
+  if (input.kind === 'maintenance') {
+    if (input.action !== 'complete') return null;
+    return maintenanceOpen.has(input.currentStatus) ? 'done' : null;
+  }
+  return requestTransitions[input.currentStatus]?.[input.action] || null;
+}
+
+function sameOutcome(input) {
+  if (input.action === 'accept' && input.currentStatus === 'accepted') return true;
+  if (
+    input.action === 'complete' &&
+    ['done', 'accepted', 'closed'].includes(input.currentStatus)
+  ) {
+    return true;
+  }
+  return false;
 }
 
 function applyTransition(input) {
+  const role = normalizeRole(input.role);
   if (input.lastCommandKey && input.lastCommandKey === input.commandKey) {
     return { ok: true, idempotent: true, status: input.currentStatus };
   }
-  const table = input.kind === 'maintenance' ? maintenanceTransitions : requestTransitions;
-  const next = table[input.currentStatus]?.[input.action];
+  if (Number(input.baseRevision) !== Number(input.currentRevision)) {
+    return { ok: false, denial: 'Конфликт версии', conflict: true };
+  }
+  if (input.action === 'assign' || input.action === 'reassign') {
+    return { ok: false, denial: 'Назначение вручную недоступно' };
+  }
+  if (input.kind === 'maintenance' && input.currentStatus === 'overdue') {
+    return { ok: false, denial: 'Месяц закрыт как просроченный' };
+  }
+  const next = nextStatus(input);
   if (!next) {
-    if (input.action === 'accept' && input.currentStatus === 'accepted') {
+    if (sameOutcome(input)) {
       return { ok: true, idempotent: true, status: input.currentStatus };
     }
     return { ok: false, denial: 'Переход недоступен' };
   }
-  if (leaderActions.has(input.action) && !leaderRoles.has(input.role)) {
+  if (leaderActions.has(input.action) && role !== 'manager') {
     return { ok: false, denial: 'Операция доступна только руководителю' };
   }
   if (specialistActions.has(input.action)) {
-    if (input.role !== 'specialist' || input.actorId !== input.assigneeId) {
+    if (role !== 'specialist' || input.actorId !== input.assigneeId) {
       return { ok: false, denial: 'Исполнять может только назначенный специалист' };
     }
   }
   if (input.action === 'returnForRework' && !String(input.comment || '').trim()) {
     return { ok: false, denial: 'Возврат требует комментарий' };
   }
-  if ((input.action === 'assign' || input.action === 'reassign') && !input.assigneeId) {
-    return { ok: false, denial: 'Укажите исполнителя' };
-  }
-  if (input.action === 'submit' && input.checklistComplete === false) {
-    return { ok: false, denial: 'Заполните обязательные пункты чек-листа' };
-  }
-  if (Number(input.baseRevision) !== Number(input.currentRevision)) {
-    return { ok: false, denial: 'Конфликт версии', conflict: true };
+  if (input.action === 'complete' && input.kind !== 'maintenance' && input.requiresReview) {
+    return { ok: false, denial: 'Заявка требует проверки руководителя' };
   }
   return {
     ok: true,
@@ -89,4 +115,5 @@ module.exports = {
   redactLog,
   legacyRequestStatus,
   legacyMaintenanceStatus,
+  normalizeRole,
 };

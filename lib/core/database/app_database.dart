@@ -19,10 +19,11 @@ class AppDatabase {
     final database = await factory.openDatabase(
       inMemoryDatabasePath,
       options: OpenDatabaseOptions(
-        version: 6,
+        version: 7,
         onCreate: (database, _) => _createSchema(database),
         onUpgrade: (database, oldVersion, newVersion) async {
           if (oldVersion < 6) await migrateToWorkflowSchema(database);
+          if (oldVersion < 7) await migrateToServiceCycleSchema(database);
         },
       ),
     );
@@ -33,7 +34,7 @@ class AppDatabase {
     final path = join(await getDatabasesPath(), 'azs_app.db');
     return openDatabase(
       path,
-      version: 6,
+      version: 7,
       onCreate: (db, version) async {
         await _createSchema(db);
       },
@@ -79,6 +80,9 @@ class AppDatabase {
         if (oldVersion < 6) {
           await migrateToWorkflowSchema(db);
         }
+        if (oldVersion < 7) {
+          await migrateToServiceCycleSchema(db);
+        }
       },
     );
   }
@@ -96,6 +100,7 @@ class AppDatabase {
             management_id TEXT,
             department_id TEXT,
             crew_id TEXT,
+            specialist_id TEXT,
             active INTEGER NOT NULL DEFAULT 1,
             created_by TEXT,
             created_at TEXT,
@@ -128,6 +133,7 @@ class AppDatabase {
             management_id TEXT,
             department_id TEXT,
             crew_id TEXT,
+            requires_review INTEGER NOT NULL DEFAULT 0,
             FOREIGN KEY (station_number) REFERENCES stations(number)
           )
         ''');

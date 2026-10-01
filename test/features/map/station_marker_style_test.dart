@@ -12,7 +12,7 @@ void main() {
       expect(style, StationMarkerStyle.highlighted);
       expect(
         stationMarkerCaption(maintenanceDone: true, highlighted: true),
-        'Требуется внимание',
+        'Просрочено',
       );
     });
 

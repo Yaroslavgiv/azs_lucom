@@ -109,6 +109,7 @@ PanelMetrics summarizePanel(Iterable<PanelWorkItem> items) {
   for (final item in items) {
     if (item.kind == 'request' &&
         item.status != 'accepted' &&
+        item.status != 'closed' &&
         item.status != 'cancelled') {
       openRequests.add(item.id);
       if (item.overdue || item.critical) {
@@ -117,7 +118,10 @@ PanelMetrics summarizePanel(Iterable<PanelWorkItem> items) {
       }
     }
     if (item.kind == 'maintenance' && item.status == 'on_review') waiting += 1;
-    if (item.kind == 'maintenance' && item.status == 'accepted') accepted += 1;
+    if (item.kind == 'maintenance' &&
+        (item.status == 'accepted' || item.status == 'done')) {
+      accepted += 1;
+    }
     if (item.kind == 'maintenance' && item.overdue) {
       attentionStations.add(item.stationNumber);
     }

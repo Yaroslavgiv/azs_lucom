@@ -25,24 +25,27 @@ void main() {
   );
   const departmentHead = AccessSubject(
     userId: 'head',
-    role: AppRole.departmentHead,
+    role: AppRole.manager,
+    scope: ManagerScope.department,
     managementId: 'mgmt',
     departmentId: 'dept',
   );
   const managementHead = AccessSubject(
     userId: 'boss',
-    role: AppRole.managementHead,
+    role: AppRole.manager,
+    scope: ManagerScope.management,
     managementId: 'mgmt',
   );
   const foreignHead = AccessSubject(
     userId: 'foreign',
-    role: AppRole.managementHead,
+    role: AppRole.manager,
+    scope: ManagerScope.management,
     managementId: 'other',
   );
   const admin = AccessSubject(userId: 'admin', role: AppRole.admin);
 
   group('request transitions', () {
-    test('manager assigns a new request', () {
+    test('manual assignment is denied', () {
       final result = applyWorkCommand(
         actor: departmentHead,
         station: station,
@@ -52,8 +55,35 @@ void main() {
         commandKey: 'k1',
         assigneeId: 'spec',
       );
-      expect(result.applied, isTrue);
-      expect(result.nextStatus, 'assigned');
+      expect(result.denial, 'Назначение вручную недоступно');
+    });
+
+    test('assignee closes a request without review', () {
+      final result = applyWorkCommand(
+        actor: specialist,
+        station: station,
+        kind: WorkKind.request,
+        currentStatus: 'created',
+        action: WorkAction.complete,
+        commandKey: 'close',
+        assigneeId: 'spec',
+      );
+      expect(result.nextStatus, 'closed');
+      expect(legacyRequestStatus('closed'), 'closed');
+    });
+
+    test('review rule blocks direct completion', () {
+      final result = applyWorkCommand(
+        actor: specialist,
+        station: station,
+        kind: WorkKind.request,
+        currentStatus: 'in_progress',
+        action: WorkAction.complete,
+        commandKey: 'close-review',
+        assigneeId: 'spec',
+        requiresReview: true,
+      );
+      expect(result.denial, 'Заявка требует проверки руководителя');
     });
 
     test('specialist cannot assign', () {
@@ -194,25 +224,45 @@ void main() {
       expect(result.succeeded, isFalse);
     });
 
-    test('incomplete checklist blocks maintenance submit', () {
+    test('specialist records maintenance in one action', () {
       final result = applyWorkCommand(
         actor: specialist,
         station: station,
         kind: WorkKind.maintenance,
-        currentStatus: 'in_progress',
-        action: WorkAction.submit,
+        currentStatus: 'not_done',
+        action: WorkAction.complete,
         commandKey: 'k10',
         assigneeId: 'spec',
-        checklistComplete: false,
       );
-      expect(result.denial, contains('чек-листа'));
+      expect(result.nextStatus, 'done');
+      final again = applyWorkCommand(
+        actor: specialist,
+        station: station,
+        kind: WorkKind.maintenance,
+        currentStatus: 'done',
+        action: WorkAction.complete,
+        commandKey: 'k11',
+        assigneeId: 'spec',
+      );
+      expect(again.idempotentReplay, isTrue);
     });
 
     test('accepted request stays closed in the legacy status', () {
       expect(legacyRequestStatus('accepted'), 'closed');
       expect(legacyRequestStatus('created'), 'open');
-      expect(legacyMaintenanceStatus('accepted'), 'done');
-      expect(legacyMaintenanceStatus('planned'), 'pending');
+      expect(legacyMaintenanceStatus('done'), 'done');
+      expect(legacyMaintenanceStatus('not_done'), 'pending');
+    });
+
+    test('legacy head codes decode as a manager scope', () {
+      expect(appRoleFromCode('department_head'), AppRole.manager);
+      expect(decodeRole('department_head')?.scope, ManagerScope.department);
+      expect(decodeRole('management_head')?.scope, ManagerScope.management);
+      expect(contractualDueAt(DateTime.utc(2026, 1, 1), null), isNull);
+      expect(
+        contractualDueAt(DateTime.utc(2026, 1, 1), 48),
+        DateTime.utc(2026, 1, 3),
+      );
     });
   });
 
@@ -250,8 +300,21 @@ void main() {
       expect(canReadStation(foreignHead, station), isFalse);
     });
 
-    test('specialist sees the own crew and personal assignments', () {
+    test('specialist sees the assigned station, not the whole crew', () {
       expect(canReadStation(specialist, station), isTrue);
+      expect(
+        canReadStation(
+          specialist,
+          const OrgStation(
+            number: '8',
+            managementId: 'mgmt',
+            departmentId: 'dept',
+            crewId: 'crew',
+            specialistId: 'other',
+          ),
+        ),
+        isFalse,
+      );
       expect(
         canReadStation(
           specialist,
@@ -316,13 +379,12 @@ void main() {
   });
 
   group('map tone', () {
-    test('attention overrides accepted maintenance', () {
+    test('previous overdue maintenance overrides this month', () {
       expect(
         resolveMapTone(
           const MapStatusInput(
-            maintenanceAccepted: true,
-            overdue: true,
-            criticalRequest: false,
+            maintenanceDoneThisMonth: true,
+            previousPeriodOverdue: true,
           ),
         ),
         MapTone.attention,
@@ -330,39 +392,28 @@ void main() {
       expect(
         resolveMapTone(
           const MapStatusInput(
-            maintenanceAccepted: true,
-            overdue: false,
-            criticalRequest: true,
+            maintenanceDoneThisMonth: true,
+            contractualOverdueOrCritical: true,
           ),
         ),
         MapTone.attention,
       );
     });
 
-    test('accepted maintenance is done when nothing needs attention', () {
+    test('this month done is green when nothing is overdue', () {
       expect(
-        resolveMapTone(
-          const MapStatusInput(
-            maintenanceAccepted: true,
-            overdue: false,
-            criticalRequest: false,
-          ),
-        ),
+        resolveMapTone(const MapStatusInput(maintenanceDoneThisMonth: true)),
         MapTone.done,
       );
     });
 
-    test('otherwise the station stays planned', () {
+    test('otherwise the station stays not done', () {
       final tone = resolveMapTone(
-        const MapStatusInput(
-          maintenanceAccepted: false,
-          overdue: false,
-          criticalRequest: false,
-        ),
+        const MapStatusInput(maintenanceDoneThisMonth: false),
       );
       expect(tone, MapTone.planned);
-      expect(mapToneLabel(tone), 'ТО запланировано');
-      expect(mapToneLabel(MapTone.attention), 'Требуется внимание');
+      expect(mapToneLabel(tone), 'ТО не выполнено');
+      expect(mapToneLabel(MapTone.attention), 'Просрочено');
       expect(mapToneLabel(MapTone.done), 'ТО выполнено');
     });
   });

@@ -41,20 +41,28 @@ class LocalWorkService {
     if (!canReadStation(actor, station)) {
       throw WorkDenied('Нет доступа к объекту');
     }
-    final now = _clock().toIso8601String();
+    final createdAt = _clock().toUtc();
+    final rule = await _contractRule(category);
+    final due = contractualDueAt(createdAt, rule?.durationHours);
+    final specialistId = station.specialistId;
+    final missingSpecialist = specialistId == null || specialistId.isEmpty;
+    final workflow = missingSpecialist ? 'unassigned' : 'created';
     final id = await _db.db.insert('requests', {
       'station_number': stationNumber,
       'type': 'НЗ',
       'request_type': requestType,
       'description': description,
-      'date_created': now.substring(0, 10),
+      'date_created': createdAt.toIso8601String().substring(0, 10),
       'status': 'open',
       'uuid': newUuid(),
       'category': category,
       'author_id': actor.userId,
+      'assignee_id': missingSpecialist ? null : specialistId,
+      'due_at': due?.toIso8601String(),
       'critical': critical ? 1 : 0,
       'revision': 0,
-      'workflow_status': 'created',
+      'workflow_status': workflow,
+      'requires_review': rule?.requiresReview == true ? 1 : 0,
       'source': 'internal',
       'management_id': station.managementId,
       'department_id': station.departmentId,
@@ -67,8 +75,30 @@ class LocalWorkService {
       entityType: 'request',
       entityId: '$id',
       action: 'create',
-      nextValue: 'created',
+      nextValue: workflow,
     );
+    if (missingSpecialist) {
+      final leaders = await ProfileRepository(_db).leadersInScope(station);
+      await _notifyUsers(
+        recipients: leaders.map((leader) => leader.userId),
+        actor: actor,
+        type: 'missing_specialist',
+        title: 'На станции нет специалиста',
+        entityType: 'request',
+        entityId: '$id',
+        station: station,
+      );
+    } else {
+      await _notifyUsers(
+        recipients: [specialistId],
+        actor: actor,
+        type: 'request_created',
+        title: 'Новая заявка на вашей АЗС',
+        entityType: 'request',
+        entityId: '$id',
+        station: station,
+      );
+    }
     return id;
   }
 
@@ -77,9 +107,7 @@ class LocalWorkService {
     required int requestId,
     required WorkAction action,
     String? comment,
-    String? assigneeId,
     String? dueAt,
-    bool checklistComplete = true,
   }) async {
     final rows = await _db.db.query(
       'requests',
@@ -91,6 +119,7 @@ class LocalWorkService {
     final row = rows.first;
     final station = await _station(row['station_number'] as String);
     final currentAssignee = row['assignee_id'] as String?;
+    final requiresReview = (row['requires_review'] as int? ?? 0) == 1;
     final revision = (row['revision'] as int?) ?? 0;
     final commandKey = workCommandKey(
       entity: 'request',
@@ -107,11 +136,9 @@ class LocalWorkService {
       commandKey: commandKey,
       lastCommandKey: row['last_command_key'] as String?,
       comment: comment,
-      assigneeId: action == WorkAction.assign || action == WorkAction.reassign
-          ? assigneeId
-          : currentAssignee,
+      assigneeId: currentAssignee,
       assignedToActor: currentAssignee == actor.userId,
-      checklistComplete: checklistComplete,
+      requiresReview: requiresReview,
     );
     if (!result.succeeded) {
       throw WorkDenied(result.denial ?? 'Переход недоступен');
@@ -119,26 +146,23 @@ class LocalWorkService {
     if (result.idempotentReplay) return result;
 
     final next = result.nextStatus!;
-    final nextAssignee =
-        action == WorkAction.assign || action == WorkAction.reassign
-        ? assigneeId
-        : currentAssignee;
+    final closed =
+        next == 'accepted' || next == 'cancelled' || next == 'closed';
     await _db.db.update(
       'requests',
       {
         'workflow_status': next,
         'status': legacyRequestStatus(next),
-        'assignee_id': nextAssignee,
+        'assignee_id': currentAssignee,
         'due_at': dueAt ?? row['due_at'],
         'revision': revision + 1,
         'last_command_key': commandKey,
         'close_comment': action == WorkAction.returnForRework
             ? comment
             : row['close_comment'],
-        'close_date': next == 'accepted' || next == 'cancelled'
-            ? _clock().toIso8601String()
-            : row['close_date'],
-        'result_text': action == WorkAction.submit
+        'close_date': closed ? _clock().toIso8601String() : row['close_date'],
+        'result_text':
+            action == WorkAction.submit || action == WorkAction.complete
             ? (comment ?? row['result_text'])
             : row['result_text'],
       },
@@ -170,7 +194,7 @@ class LocalWorkService {
       entityType: 'request',
       entityId: '$requestId',
       station: station,
-      assigneeId: nextAssignee,
+      assigneeId: currentAssignee,
       actor: actor,
     );
     await _enqueueCommand(
@@ -179,7 +203,7 @@ class LocalWorkService {
       action: action,
       commandKey: commandKey,
       revision: revision,
-      assigneeId: nextAssignee,
+      assigneeId: currentAssignee,
       dueAt: dueAt ?? row['due_at'] as String?,
       comment: comment,
       dependsOn: 'requests:$requestId',
@@ -198,7 +222,8 @@ class LocalWorkService {
       'station_number': stationNumber,
       'month': month,
       'status': 'pending',
-      'workflow_status': 'planned',
+      'workflow_status': 'not_done',
+      'assignee_id': station.specialistId,
       'uuid': newUuid(),
       'regulation_id': regulationId,
       'due_at': dueAt,
@@ -215,7 +240,6 @@ class LocalWorkService {
     required String month,
     required WorkAction action,
     String? comment,
-    String? assigneeId,
     String? dueAt,
   }) async {
     await ensureMaintenance(stationNumber: stationNumber, month: month);
@@ -235,24 +259,19 @@ class LocalWorkService {
       action: action.name,
       revision: revision,
     );
-    final currentAssignee = row['assignee_id'] as String?;
-    final checklistComplete = action == WorkAction.submit
-        ? await _checklistComplete(localId)
-        : true;
+    final currentAssignee =
+        (row['assignee_id'] as String?) ?? station.specialistId;
     final result = applyWorkCommand(
       actor: actor,
       station: station,
       kind: WorkKind.maintenance,
-      currentStatus: (row['workflow_status'] as String?) ?? 'planned',
+      currentStatus: (row['workflow_status'] as String?) ?? 'not_done',
       action: action,
       commandKey: commandKey,
       lastCommandKey: row['last_command_key'] as String?,
       comment: comment,
-      assigneeId: action == WorkAction.assign || action == WorkAction.reassign
-          ? assigneeId
-          : currentAssignee,
+      assigneeId: currentAssignee,
       assignedToActor: currentAssignee == actor.userId,
-      checklistComplete: checklistComplete,
     );
     if (!result.succeeded) {
       throw WorkDenied(result.denial ?? 'Переход недоступен');
@@ -264,17 +283,14 @@ class LocalWorkService {
       {
         'workflow_status': next,
         'status': legacyMaintenanceStatus(next),
-        'assignee_id':
-            action == WorkAction.assign || action == WorkAction.reassign
-            ? assigneeId
-            : currentAssignee,
+        'assignee_id': currentAssignee,
         'due_at': dueAt ?? row['due_at'],
         'revision': revision + 1,
         'last_command_key': commandKey,
-        'accepted_at': next == 'accepted'
+        'accepted_at': next == 'done' || next == 'accepted'
             ? _clock().toIso8601String()
             : row['accepted_at'],
-        'date_done': next == 'accepted'
+        'date_done': next == 'done' || next == 'accepted'
             ? _clock().toIso8601String()
             : row['date_done'],
         'result_text': comment ?? row['result_text'],
@@ -296,7 +312,7 @@ class LocalWorkService {
       entityType: 'maintenance',
       entityId: localId,
       station: station,
-      assigneeId: assigneeId ?? currentAssignee,
+      assigneeId: currentAssignee,
       actor: actor,
     );
     await _enqueueCommand(
@@ -305,7 +321,7 @@ class LocalWorkService {
       action: action,
       commandKey: commandKey,
       revision: revision,
-      assigneeId: assigneeId ?? currentAssignee,
+      assigneeId: currentAssignee,
       dueAt: dueAt ?? row['due_at'] as String?,
       comment: comment,
       dependsOn: 'maintenance:$localId',
@@ -412,6 +428,54 @@ class LocalWorkService {
     return true;
   }
 
+  Future<void> rollMaintenanceMonths() async {
+    final current = moscowServiceMonth(_clock());
+    final stations = await _db.db.query('stations');
+    for (final stationRow in stations) {
+      final number = stationRow['number'] as String;
+      final station = _stationFromRow(stationRow);
+      final rows = await _db.db.query(
+        'maintenance',
+        where: 'station_number = ?',
+        whereArgs: [number],
+      );
+      var hasCurrent = false;
+      for (final row in rows) {
+        final month = row['month'] as String? ?? '';
+        if (month == current.key) {
+          hasCurrent = true;
+          continue;
+        }
+        if (!isEarlierServiceMonth(month, current)) continue;
+        final workflow = row['workflow_status'] as String? ?? 'planned';
+        final legacy = row['status'] as String?;
+        if (maintenanceCountsAsDone(workflow, legacy) ||
+            workflow == 'overdue') {
+          continue;
+        }
+        await _db.db.update(
+          'maintenance',
+          {'workflow_status': 'overdue', 'status': 'pending'},
+          where: 'station_number = ? AND month = ?',
+          whereArgs: [number, month],
+        );
+        final leaders = await ProfileRepository(_db).leadersInScope(station);
+        await _notifyUsers(
+          recipients: leaders.map((leader) => leader.userId),
+          type: 'maintenance_overdue',
+          title: 'ТО не выполнено к концу месяца',
+          entityType: 'maintenance',
+          entityId: '${number}_$month',
+          station: station,
+        );
+      }
+      if (!hasCurrent && (stationRow['active'] as int? ?? 1) == 1) {
+        await ensureMaintenance(stationNumber: number, month: current.key);
+      }
+    }
+    await _notifyRequestDeadlines();
+  }
+
   Future<List<Map<String, Object?>>> checklistTemplateItems() async {
     final rows = await _db.db.query(
       'checklist_templates',
@@ -437,36 +501,110 @@ class LocalWorkService {
       return OrgStation(number: number);
     }
     final row = rows.first;
+    return _stationFromRow(row);
+  }
+
+  OrgStation _stationFromRow(Map<String, Object?> row) {
     return OrgStation(
-      number: number,
+      number: row['number'] as String,
       managementId: row['management_id'] as String?,
       departmentId: row['department_id'] as String?,
       crewId: row['crew_id'] as String?,
       region: row['region'] as String?,
+      specialistId: row['specialist_id'] as String?,
     );
   }
 
-  Future<bool> _checklistComplete(String maintenanceKey) async {
-    final template = await checklistTemplateItems();
-    if (template.isEmpty) return true;
-    final results = await _db.db.query(
-      'checklist_results',
-      where: 'maintenance_key = ?',
-      whereArgs: [maintenanceKey],
+  Future<ContractRule?> _contractRule(String category) async {
+    if (category.isEmpty) return null;
+    final rows = await _db.db.query(
+      'contract_rules',
+      where: 'category = ? AND active = 1',
+      whereArgs: [category],
+      orderBy: 'version DESC, effective_from DESC',
+      limit: 1,
     );
-    final byItem = {
-      for (final row in results)
-        row['item_id'] as String: row['result'] as String?,
-    };
-    return checklistReadyForSubmit(
-      template.map(
-        (item) => ChecklistItemDraft(
-          id: item['id'] as String? ?? '',
-          required: item['required'] == true,
-          result: byItem[item['id']],
+    if (rows.isEmpty) return null;
+    final row = rows.first;
+    final effective = DateTime.tryParse(
+      (row['effective_from'] as String?) ?? '',
+    );
+    if (effective != null && effective.isAfter(_clock().toUtc())) return null;
+    return ContractRule(
+      category: category,
+      version: (row['version'] as int?) ?? 1,
+      durationHours: row['duration_hours'] as int?,
+      requiresReview: (row['requires_review'] as int? ?? 0) == 1,
+      active: true,
+    );
+  }
+
+  Future<void> _notifyRequestDeadlines() async {
+    final now = _clock().toUtc();
+    final soon = now.add(const Duration(hours: 24));
+    final rows = await _db.db.query('requests');
+    for (final row in rows) {
+      final workflow = (row['workflow_status'] as String?) ?? 'created';
+      final due = DateTime.tryParse((row['due_at'] as String?) ?? '');
+      final station = await _station(row['station_number'] as String);
+      final entityId = '${row['id']}';
+      if (isOverdue(dueAt: due, workflowStatus: workflow, now: now)) {
+        final leaders = await ProfileRepository(_db).leadersInScope(station);
+        await _notifyUsers(
+          recipients: leaders.map((leader) => leader.userId),
+          type: 'request_overdue',
+          title: 'Просрочена заявка',
+          entityType: 'request',
+          entityId: entityId,
+          station: station,
+        );
+        continue;
+      }
+      final assignee = row['assignee_id'] as String?;
+      if (due != null &&
+          assignee != null &&
+          !due.isAfter(soon) &&
+          due.isAfter(now)) {
+        await _notifyUsers(
+          recipients: [assignee],
+          type: 'deadline_soon',
+          title: 'Приближается договорный срок заявки',
+          entityType: 'request',
+          entityId: entityId,
+          station: station,
+        );
+      }
+    }
+  }
+
+  Future<void> _notifyUsers({
+    required Iterable<String> recipients,
+    required String type,
+    required String title,
+    required String entityType,
+    required String entityId,
+    required OrgStation station,
+    AccessSubject? actor,
+  }) async {
+    final unique = recipients.toSet()..remove(actor?.userId);
+    for (final recipient in unique) {
+      if (recipient.isEmpty) continue;
+      await _db.db.insert('notifications', {
+        'id': newUuid(),
+        'recipient_id': recipient,
+        'event_key': notificationEventKey(
+          event: type,
+          entityId: entityId,
+          recipientId: recipient,
         ),
-      ),
-    );
+        'type': type,
+        'entity_type': entityType,
+        'entity_id': entityId,
+        'title': title,
+        'body': station.number,
+        'created_at': _clock().toIso8601String(),
+      }, conflictAlgorithm: ConflictAlgorithm.ignore);
+    }
   }
 
   Future<void> _audit({
@@ -541,6 +679,8 @@ class LocalWorkService {
         return 'Результат отправлен на проверку';
       case WorkAction.accept:
         return 'Работа принята';
+      case WorkAction.complete:
+        return 'Работа завершена';
       default:
         return 'Изменение по работе';
     }

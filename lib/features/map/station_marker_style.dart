@@ -19,14 +19,14 @@ enum StationMarkerStyle {
 StationMarkerStyle resolveStationMarkerStyle({
   required bool maintenanceDone,
   required bool highlighted,
-  bool overdue = false,
-  bool criticalRequest = false,
+  bool previousPeriodOverdue = false,
+  bool contractualAttention = false,
 }) {
   final tone = resolveMapTone(
     MapStatusInput(
-      maintenanceAccepted: maintenanceDone,
-      overdue: overdue,
-      criticalRequest: criticalRequest || highlighted,
+      maintenanceDoneThisMonth: maintenanceDone,
+      previousPeriodOverdue: previousPeriodOverdue,
+      contractualOverdueOrCritical: contractualAttention || highlighted,
     ),
   );
   return markerStyleForTone(tone);
@@ -52,9 +52,9 @@ String stationMarkerCaption({
   return mapToneLabel(
     resolveMapTone(
       MapStatusInput(
-        maintenanceAccepted: maintenanceDone,
-        overdue: overdue,
-        criticalRequest: criticalRequest || highlighted,
+        maintenanceDoneThisMonth: maintenanceDone,
+        previousPeriodOverdue: overdue,
+        contractualOverdueOrCritical: criticalRequest || highlighted,
       ),
     ),
   );

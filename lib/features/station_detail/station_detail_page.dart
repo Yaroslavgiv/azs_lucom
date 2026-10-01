@@ -1,3 +1,4 @@
+import 'package:azs_domain/azs_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -112,15 +113,13 @@ class StationDetailPage extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
                 AppSecondaryButton(
-                  label: 'Ход ТО и чек-лист',
-                  icon: Icons.checklist,
+                  label: 'Зафиксировать ТО',
+                  icon: Icons.event_available,
                   onPressed: () {
-                    final now = DateTime.now();
-                    final month =
-                        '${now.year}-${now.month.toString().padLeft(2, '0')}';
+                    final month = moscowServiceMonth(DateTime.now()).key;
                     Navigator.of(context).push(
                       AppPageRoute(
-                        page: MaintenanceChecklistPage(
+                        page: MaintenanceRecordPage(
                           stationNumber: stationNumber,
                           month: month,
                         ),

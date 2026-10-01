@@ -10,6 +10,7 @@ class Station {
     this.managementId,
     this.departmentId,
     this.crewId,
+    this.specialistId,
     this.active = true,
     this.createdBy,
     this.createdAt,
@@ -26,6 +27,7 @@ class Station {
   final String? managementId;
   final String? departmentId;
   final String? crewId;
+  final String? specialistId;
   final bool active;
   final String? createdBy;
   final String? createdAt;
@@ -47,6 +49,7 @@ class Station {
     managementId: map['management_id'] as String?,
     departmentId: map['department_id'] as String?,
     crewId: map['crew_id'] as String?,
+    specialistId: map['specialist_id'] as String?,
     active: (map['active'] as int? ?? 1) == 1,
     createdBy: map['created_by'] as String?,
     createdAt: map['created_at'] as String?,
@@ -64,6 +67,7 @@ class Station {
     'management_id': managementId,
     'department_id': departmentId,
     'crew_id': crewId,
+    'specialist_id': specialistId,
     'active': active ? 1 : 0,
     'created_by': createdBy,
     'created_at': createdAt,

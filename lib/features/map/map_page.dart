@@ -9,6 +9,7 @@ import '../../core/models/station.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/repositories/maintenance_repository.dart';
 import '../../core/services/location_service.dart';
+import '../../core/services/local_work_service.dart';
 import '../../core/services/station_map_status.dart';
 import '../../core/theme/app_colors.dart';
 import '../../shared/dialogs/station_marker_dialog.dart';
@@ -48,23 +49,20 @@ class _MapPageState extends ConsumerState<MapPage> {
     for (final station in stations) {
       final point = LatLng(station.lat!, station.lon!);
       final maintenanceDone = _statuses?[station.number]?.isDone == true;
-      final tone = _tones[station.number];
-      final caption = tone == null
-          ? stationMarkerCaption(
-              maintenanceDone: maintenanceDone,
-              highlighted: highlightedStationNumbers.contains(station.number),
-            )
-          : mapToneLabel(tone);
+      final highlighted = highlightedStationNumbers.contains(station.number);
+      var tone = _tones[station.number];
+      if (highlighted) {
+        tone = MapTone.attention;
+      } else {
+        tone ??= resolveMapTone(
+          MapStatusInput(maintenanceDoneThisMonth: maintenanceDone),
+        );
+      }
       final crew = station.crewId == null ? '' : ' · ${station.crewId}';
       final markerTitle = station.name.isNotEmpty
-          ? '${station.name} (№${station.number}) · $caption$crew'
-          : '№${station.number} · $caption$crew';
-      final iconUrl = tone == null
-          ? resolveStationMarkerStyle(
-              maintenanceDone: maintenanceDone,
-              highlighted: highlightedStationNumbers.contains(station.number),
-            ).iconUrl
-          : markerStyleForTone(tone).iconUrl;
+          ? '${station.name} (№${station.number})$crew'
+          : '№${station.number}$crew';
+      final iconUrl = markerStyleForTone(tone).iconUrl;
 
       markers.add(
         MapMarker(
@@ -106,6 +104,7 @@ class _MapPageState extends ConsumerState<MapPage> {
       final stations = await stationsRepo.getAllWithCoordinates();
       final statuses = await maintRepo.getAllStatusesForCurrentMonth();
       final database = await ref.read(databaseProvider.future);
+      await LocalWorkService(database).rollMaintenanceMonths();
       final tones = await StationMapStatusService(database).load();
 
       if (mounted) {
@@ -291,8 +290,8 @@ class _MapLegend extends StatelessWidget {
   Widget build(BuildContext context) {
     const rows = [
       (AppColors.success, 'ТО выполнено'),
-      (AppColors.warning, 'ТО запланировано'),
-      (AppColors.error, 'Требуется внимание'),
+      (AppColors.warning, 'ТО не выполнено'),
+      (AppColors.error, 'Просрочено'),
     ];
     return GlassCard(
       child: Column(

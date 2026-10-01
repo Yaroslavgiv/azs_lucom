@@ -42,15 +42,13 @@ exports.applyWorkCommand = onCall({ region: 'europe-west1' }, async (request) =>
         action: data.action,
         role: profile.role,
         actorId: request.auth.uid,
-        assigneeId: data.action === 'assign' || data.action === 'reassign'
-          ? data.assignee_id
-          : current.assignee_id,
+        assigneeId: current.assignee_id,
         comment: data.comment,
         commandKey: data.command_key,
         lastCommandKey: current.last_command_key,
         baseRevision: data.base_revision,
         currentRevision: current.revision || 0,
-        checklistComplete: data.checklist_complete !== false,
+        requiresReview: current.requires_review === true || current.requires_review === 1,
       });
       if (!decision.ok) {
         const code = decision.conflict ? 'failed-precondition' : 'permission-denied';

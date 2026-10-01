@@ -6,6 +6,7 @@ import 'package:azs_app/core/services/geocoder_service.dart';
 import 'package:azs_app/core/services/local_work_service.dart';
 import 'package:azs_app/core/services/request_exchange.dart';
 import 'package:azs_app/core/services/station_creation_service.dart';
+import 'package:azs_app/core/services/station_map_status.dart';
 import 'package:azs_app/core/services/sync_queue_store.dart';
 import 'package:azs_domain/azs_domain.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,7 +16,8 @@ import '../../support/test_database.dart';
 void main() {
   const head = AccessSubject(
     userId: 'head',
-    role: AppRole.departmentHead,
+    role: AppRole.manager,
+    scope: ManagerScope.department,
     managementId: 'mgmt',
     departmentId: 'dept',
   );
@@ -41,6 +43,7 @@ void main() {
           managementId: 'mgmt',
           departmentId: 'dept',
           crewId: 'crew',
+          specialistId: 'spec',
         ),
       );
       final work = LocalWorkService(database);
@@ -50,12 +53,13 @@ void main() {
         requestType: 'Ремонт',
         description: 'Не работает ТРК',
       );
-      await work.applyRequest(
-        actor: head,
-        requestId: id,
-        action: WorkAction.assign,
-        assigneeId: 'spec',
+      final created = await database.db.query(
+        'requests',
+        where: 'id = ?',
+        whereArgs: [id],
       );
+      expect(created.single['assignee_id'], 'spec');
+      expect(created.single['workflow_status'], 'created');
       final first = await work.applyRequest(
         actor: specialist,
         requestId: id,
@@ -96,6 +100,7 @@ void main() {
         managementId: 'mgmt',
         departmentId: 'dept',
         crewId: 'crew',
+        specialistId: 'spec',
       ),
     );
     final work = LocalWorkService(database);
@@ -104,12 +109,6 @@ void main() {
       stationNumber: '1',
       requestType: 'Осмотр',
       description: 'Проверка',
-    );
-    await work.applyRequest(
-      actor: head,
-      requestId: id,
-      action: WorkAction.assign,
-      assigneeId: 'spec',
     );
     await work.applyRequest(
       actor: specialist,
@@ -261,6 +260,131 @@ void main() {
     expect(rows.single['name'], 'Ремонт');
   });
 
+  test('missing specialist leaves the request unassigned', () async {
+    final database = await openTestDatabase();
+    addTearDown(database.close);
+    await StationRepository(database).upsert(
+      Station(
+        number: '1',
+        name: 'АЗС',
+        address: '',
+        region: 'spb',
+        managementId: 'mgmt',
+        departmentId: 'dept',
+        crewId: 'crew',
+      ),
+    );
+    final id = await LocalWorkService(database).createRequest(
+      actor: head,
+      stationNumber: '1',
+      requestType: 'Осмотр',
+      description: 'Нет исполнителя',
+    );
+    final row = await database.db.query(
+      'requests',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    expect(row.single['workflow_status'], 'unassigned');
+    expect(row.single['assignee_id'], isNull);
+    expect(row.single['due_at'], isNull);
+  });
+
+  test('contract rule sets the due date and review flag', () async {
+    final database = await openTestDatabase();
+    addTearDown(database.close);
+    await StationRepository(database).upsert(
+      Station(
+        number: '1',
+        name: 'АЗС',
+        address: '',
+        region: 'spb',
+        managementId: 'mgmt',
+        departmentId: 'dept',
+        crewId: 'crew',
+        specialistId: 'spec',
+      ),
+    );
+    await database.db.insert('contract_rules', {
+      'id': 'repair-1',
+      'category': 'repair',
+      'duration_hours': 24,
+      'requires_review': 1,
+      'effective_from': '2020-01-01T00:00:00.000Z',
+      'version': 1,
+      'active': 1,
+    });
+    final work = LocalWorkService(
+      database,
+      clock: () => DateTime.utc(2026, 10, 1, 12),
+    );
+    final id = await work.createRequest(
+      actor: head,
+      stationNumber: '1',
+      requestType: 'Ремонт',
+      description: 'По договору',
+      category: 'repair',
+    );
+    final row = await database.db.query(
+      'requests',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    expect(row.single['requires_review'], 1);
+    expect(row.single['due_at'], isNotNull);
+    expect(
+      () => work.applyRequest(
+        actor: specialist,
+        requestId: id,
+        action: WorkAction.complete,
+      ),
+      throwsA(isA<WorkDenied>()),
+    );
+  });
+
+  test('past month becomes overdue and keeps the map red', () async {
+    final clock = DateTime.utc(2026, 9, 30, 21, 30);
+    final database = await openTestDatabase();
+    addTearDown(database.close);
+    await StationRepository(database).upsert(
+      Station(
+        number: '1',
+        name: 'АЗС',
+        address: '',
+        region: 'spb',
+        managementId: 'mgmt',
+        departmentId: 'dept',
+        crewId: 'crew',
+        specialistId: 'spec',
+      ),
+    );
+    await database.db.insert('maintenance', {
+      'station_number': '1',
+      'month': '2026-09',
+      'status': 'pending',
+      'workflow_status': 'not_done',
+    });
+    final work = LocalWorkService(database, clock: () => clock);
+    await work.rollMaintenanceMonths();
+    final past = await database.db.query(
+      'maintenance',
+      where: 'month = ?',
+      whereArgs: ['2026-09'],
+    );
+    expect(past.single['workflow_status'], 'overdue');
+    await work.applyMaintenance(
+      actor: specialist,
+      stationNumber: '1',
+      month: '2026-10',
+      action: WorkAction.complete,
+    );
+    final tones = await StationMapStatusService(
+      database,
+      clock: () => clock,
+    ).load();
+    expect(tones['1'], MapTone.attention);
+  });
+
   test('workflow tables exist in a fresh database', () async {
     final database = await openTestDatabase();
     addTearDown(database.close);
@@ -276,6 +400,7 @@ void main() {
         'crews',
         'user_profiles',
         'checklist_templates',
+        'contract_rules',
         'attachments',
         'audit_events',
         'notifications',

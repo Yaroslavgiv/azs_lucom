@@ -33,6 +33,20 @@ service cloud.firestore {
       );
     }
 
+    function isDepartmentScoped() {
+      return role() == 'department_head' ||
+        (role() == 'manager' && (
+          profile().get('manager_scope', '') == 'department' ||
+          (profile().get('manager_scope', '') == '' &&
+            profile().get('department_id', null) != null)
+        ));
+    }
+
+    function isManagementScoped() {
+      return role() == 'management_head' ||
+        (role() == 'manager' && !isDepartmentScoped());
+    }
+
     function legacyAccess() {
       return signedIn() && !hasProfile();
     }
@@ -45,17 +59,13 @@ service cloud.firestore {
 
     function sameScope(data) {
       return isAdmin() ||
-        (role() == 'management_head' && data.management_id == profile().management_id) ||
-        (role() == 'department_head' && data.department_id == profile().department_id) ||
-        (role() == 'manager' && (
-          (profile().get('department_id', null) != null &&
-            data.department_id == profile().department_id) ||
-          (profile().get('department_id', null) == null &&
-            data.management_id == profile().management_id)
-        )) ||
+        (isManagementScoped() && data.management_id == profile().management_id) ||
+        (isDepartmentScoped() && data.department_id == profile().department_id) ||
         (role() == 'specialist' && (
-          data.crew_id == profile().crew_id ||
-          data.assignee_id == request.auth.uid
+          data.get('specialist_id', null) == request.auth.uid ||
+          (data.get('specialist_id', null) == null &&
+            data.get('crew_id', null) == profile().get('crew_id', null)) ||
+          data.get('assignee_id', null) == request.auth.uid
         ));
     }
 
