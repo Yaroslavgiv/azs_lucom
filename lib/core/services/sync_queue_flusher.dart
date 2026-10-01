@@ -32,6 +32,10 @@ class SyncQueueFlusher {
       final items = await _queueStore.nextBatch();
       if (items.isEmpty) return;
       for (final item in items) {
+        final nextAttempt = item.nextAttemptAt;
+        if (nextAttempt != null && nextAttempt.isAfter(DateTime.now())) {
+          return;
+        }
         try {
           await _pushTransport.push(item);
           await _queueStore.remove(item.id);
@@ -41,6 +45,7 @@ class SyncQueueFlusher {
             error,
             stackTrace,
           );
+          await _queueStore.recordFailure(item.id, '$error');
           return;
         }
       }

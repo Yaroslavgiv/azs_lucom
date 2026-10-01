@@ -13,7 +13,11 @@ import '../../shared/widgets/app_buttons.dart';
 import '../../shared/widgets/glass_card.dart';
 import '../../shared/widgets/station_card_content.dart';
 import '../defect_acts/defect_acts_page.dart';
+import '../equipment/equipment_list_page.dart';
+import '../maintenance/maintenance_checklist_page.dart';
+import '../requests/request_work_page.dart';
 import '../station_info/station_info_page.dart';
+import '../stations/create_station_page.dart';
 
 final _stationProvider = FutureProvider.family<Station?, String>((
   ref,
@@ -105,6 +109,42 @@ class StationDetailPage extends ConsumerWidget {
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 8),
+                AppSecondaryButton(
+                  label: 'Ход ТО и чек-лист',
+                  icon: Icons.checklist,
+                  onPressed: () {
+                    final now = DateTime.now();
+                    final month =
+                        '${now.year}-${now.month.toString().padLeft(2, '0')}';
+                    Navigator.of(context).push(
+                      AppPageRoute(
+                        page: MaintenanceChecklistPage(
+                          stationNumber: stationNumber,
+                          month: month,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 8),
+                AppSecondaryButton(
+                  label: 'Оборудование',
+                  icon: Icons.precision_manufacturing_outlined,
+                  onPressed: () => Navigator.of(context).push(
+                    AppPageRoute(
+                      page: EquipmentListPage(stationNumber: stationNumber),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                AppSecondaryButton(
+                  label: 'Новая АЗС',
+                  icon: Icons.add_location_alt_outlined,
+                  onPressed: () => Navigator.of(
+                    context,
+                  ).push(AppPageRoute(page: const CreateStationPage())),
                 ),
                 const SizedBox(height: 8),
                 AppSecondaryButton(
@@ -201,10 +241,24 @@ class StationDetailPage extends ConsumerWidget {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'от ${r.dateCreated}',
+                                      'от ${r.dateCreated} · ${r.workflowStatus}',
                                       style: Theme.of(
                                         context,
                                       ).textTheme.bodySmall,
+                                    ),
+                                    Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: TextButton(
+                                        onPressed: () =>
+                                            Navigator.of(context).push(
+                                              AppPageRoute(
+                                                page: RequestWorkPage(
+                                                  requestId: r.id,
+                                                ),
+                                              ),
+                                            ),
+                                        child: const Text('Ход заявки'),
+                                      ),
                                     ),
                                   ],
                                 ),

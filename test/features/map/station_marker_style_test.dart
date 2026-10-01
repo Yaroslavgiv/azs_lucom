@@ -3,13 +3,17 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('resolveStationMarkerStyle', () {
-    test('completed maintenance has priority over highlighting', () {
+    test('attention overrides accepted maintenance', () {
       final style = resolveStationMarkerStyle(
         maintenanceDone: true,
         highlighted: true,
       );
 
-      expect(style, StationMarkerStyle.completed);
+      expect(style, StationMarkerStyle.highlighted);
+      expect(
+        stationMarkerCaption(maintenanceDone: true, highlighted: true),
+        'Требуется внимание',
+      );
     });
 
     test('returns highlighted style for an unfinished priority station', () {

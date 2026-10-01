@@ -126,6 +126,13 @@ class SyncPayloadResolver {
       'lon': row['lon'],
       'region': row['region'],
       'geocode_status': row['geocode_status'],
+      'management_id': row['management_id'],
+      'department_id': row['department_id'],
+      'crew_id': row['crew_id'],
+      'active': row['active'],
+      'created_by': row['created_by'],
+      'created_at': row['created_at'],
+      'input_method': row['input_method'],
     };
   }
 }

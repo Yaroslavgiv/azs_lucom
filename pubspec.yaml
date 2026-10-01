@@ -21,6 +21,12 @@ dependencies:
   latlong2: ^0.9.1
   ntk_map_view:
     path: packages/ntk_map_view
+  azs_domain:
+    path: packages/azs_domain
+  firebase_storage: ^13.4.3
+  cloud_functions: ^6.3.3
+  firebase_messaging: ^16.3.1
+  image_picker: ^1.2.2
   geolocator: ^14.0.2
   url_launcher: ^6.3.1
   webviewimage: ^0.0.6

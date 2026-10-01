@@ -1,6 +1,8 @@
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
+import 'workflow_schema.dart';
+
 class AppDatabase {
   AppDatabase._(this._database);
 
@@ -17,8 +19,11 @@ class AppDatabase {
     final database = await factory.openDatabase(
       inMemoryDatabasePath,
       options: OpenDatabaseOptions(
-        version: 5,
+        version: 6,
         onCreate: (database, _) => _createSchema(database),
+        onUpgrade: (database, oldVersion, newVersion) async {
+          if (oldVersion < 6) await migrateToWorkflowSchema(database);
+        },
       ),
     );
     return AppDatabase._(database);
@@ -28,7 +33,7 @@ class AppDatabase {
     final path = join(await getDatabasesPath(), 'azs_app.db');
     return openDatabase(
       path,
-      version: 5,
+      version: 6,
       onCreate: (db, version) async {
         await _createSchema(db);
       },
@@ -71,6 +76,9 @@ class AppDatabase {
           await _deduplicateSyncQueue(db);
           await _createSyncQueueUniqueIndex(db);
         }
+        if (oldVersion < 6) {
+          await migrateToWorkflowSchema(db);
+        }
       },
     );
   }
@@ -84,7 +92,14 @@ class AppDatabase {
             lat REAL,
             lon REAL,
             region TEXT NOT NULL,
-            geocode_status INTEGER NOT NULL DEFAULT 0
+            geocode_status INTEGER NOT NULL DEFAULT 0,
+            management_id TEXT,
+            department_id TEXT,
+            crew_id TEXT,
+            active INTEGER NOT NULL DEFAULT 1,
+            created_by TEXT,
+            created_at TEXT,
+            input_method TEXT
           )
         ''');
     await db.execute('''
@@ -98,6 +113,21 @@ class AppDatabase {
             status TEXT NOT NULL DEFAULT 'open',
             close_comment TEXT,
             close_date TEXT,
+            uuid TEXT,
+            category TEXT NOT NULL DEFAULT '',
+            author_id TEXT,
+            assignee_id TEXT,
+            due_at TEXT,
+            result_text TEXT,
+            critical INTEGER NOT NULL DEFAULT 0,
+            revision INTEGER NOT NULL DEFAULT 0,
+            workflow_status TEXT NOT NULL DEFAULT 'created',
+            last_command_key TEXT,
+            source TEXT NOT NULL DEFAULT 'internal',
+            source_external_id TEXT,
+            management_id TEXT,
+            department_id TEXT,
+            crew_id TEXT,
             FOREIGN KEY (station_number) REFERENCES stations(number)
           )
         ''');
@@ -108,6 +138,19 @@ class AppDatabase {
             status TEXT NOT NULL DEFAULT 'pending',
             date_done TEXT,
             to_type TEXT,
+            uuid TEXT,
+            assignee_id TEXT,
+            due_at TEXT,
+            regulation_id TEXT,
+            accepted_at TEXT,
+            workflow_status TEXT NOT NULL DEFAULT 'planned',
+            revision INTEGER NOT NULL DEFAULT 0,
+            result_text TEXT,
+            last_command_key TEXT,
+            author_id TEXT,
+            management_id TEXT,
+            department_id TEXT,
+            crew_id TEXT,
             PRIMARY KEY (station_number, month)
           )
         ''');
@@ -124,6 +167,12 @@ class AppDatabase {
             station_number TEXT NOT NULL,
             category TEXT NOT NULL,
             description TEXT NOT NULL DEFAULT '',
+            model TEXT NOT NULL DEFAULT '',
+            quantity INTEGER NOT NULL DEFAULT 1,
+            serial_number TEXT,
+            condition TEXT NOT NULL DEFAULT '',
+            updated_by TEXT,
+            updated_at TEXT,
             FOREIGN KEY (station_number) REFERENCES stations(number)
           )
         ''');
@@ -161,6 +210,7 @@ class AppDatabase {
       'CREATE INDEX idx_defect_acts_station_created ON defect_acts(station_number, created_at)',
     );
     await _createSyncTables(db);
+    await createWorkflowTables(db);
   }
 
   static Future<void> _createSyncTables(Database db) async {
@@ -171,7 +221,13 @@ class AppDatabase {
         local_pk TEXT NOT NULL,
         op TEXT NOT NULL,
         payload_json TEXT NOT NULL DEFAULT '',
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL,
+        attempts INTEGER NOT NULL DEFAULT 0,
+        last_error TEXT,
+        state TEXT NOT NULL DEFAULT 'pending',
+        idempotency_key TEXT,
+        depends_on TEXT,
+        next_attempt_at TEXT
       )
     ''');
     await db.execute('''

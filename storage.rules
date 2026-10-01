@@ -1,0 +1,33 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function parent(entityType, entityId) {
+      return firestore.get(/databases/(default)/documents/$(entityType)/$(entityId)).data;
+    }
+
+    function profile() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function parentVisible(entityType, entityId) {
+      let data = parent(entityType, entityId);
+      return !firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) ||
+        profile().role == 'admin' ||
+        data.crew_id == profile().crew_id ||
+        data.department_id == profile().department_id ||
+        data.management_id == profile().management_id ||
+        data.assignee_id == request.auth.uid;
+    }
+
+    match /attachments/{entityType}/{entityId}/{fileName} {
+      allow read, write: if signedIn() &&
+        firestore.exists(/databases/(default)/documents/$(entityType)/$(entityId)) &&
+        parentVisible(entityType, entityId) &&
+        request.resource.size < 15 * 1024 * 1024;
+    }
+  }
+}

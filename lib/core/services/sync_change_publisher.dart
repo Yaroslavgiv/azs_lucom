@@ -5,6 +5,7 @@ abstract interface class SyncChangePublisher {
     required String entity,
     required String localPk,
     required Map<String, Object?> payload,
+    String? dependsOn,
   });
 
   Future<void> publishDelete({required String entity, required String localPk});
@@ -18,4 +19,8 @@ abstract final class SyncEntity {
   static const stationInfo = 'station_info';
   static const defectActs = 'defect_acts';
   static const equipmentOrderExports = 'equipment_order_exports';
+  static const workCommands = 'work_commands';
+  static const attachments = 'attachments';
+  static const notifications = 'notifications';
+  static const userProfiles = 'user_profiles';
 }

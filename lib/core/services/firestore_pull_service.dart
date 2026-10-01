@@ -24,14 +24,37 @@ class FirestorePullService {
     final snapshot = await _firestore.collection(SyncEntity.stations).get();
     for (final document in snapshot.docs) {
       final data = document.data();
+      final existing = await _database.db.query(
+        'stations',
+        where: 'number = ?',
+        whereArgs: [document.id],
+        limit: 1,
+      );
+      final previous = existing.isEmpty ? null : existing.first;
       await _database.db.insert('stations', {
         'number': document.id,
-        'name': data['name'] ?? '',
-        'address': data['address'] ?? '',
-        'lat': data['lat'],
-        'lon': data['lon'],
-        'region': data['region'] ?? '',
-        'geocode_status': (data['geocode_status'] as num?)?.toInt() ?? 0,
+        'name': data['name'] ?? previous?['name'] ?? '',
+        'address': data['address'] ?? previous?['address'] ?? '',
+        'lat': data['lat'] ?? previous?['lat'],
+        'lon': data['lon'] ?? previous?['lon'],
+        'region': data['region'] ?? previous?['region'] ?? '',
+        'geocode_status':
+            (data['geocode_status'] as num?)?.toInt() ??
+            (previous?['geocode_status'] as int?) ??
+            0,
+        'management_id': data.containsKey('management_id')
+            ? data['management_id']
+            : previous?['management_id'],
+        'department_id': data.containsKey('department_id')
+            ? data['department_id']
+            : previous?['department_id'],
+        'crew_id': data.containsKey('crew_id')
+            ? data['crew_id']
+            : previous?['crew_id'],
+        'active': (data['active'] as num?)?.toInt() ?? previous?['active'] ?? 1,
+        'created_by': data['created_by'] ?? previous?['created_by'],
+        'created_at': data['created_at'] ?? previous?['created_at'],
+        'input_method': data['input_method'] ?? previous?['input_method'],
       }, conflictAlgorithm: ConflictAlgorithm.replace);
       await _putMap(SyncEntity.stations, document.id, document.id);
     }
@@ -66,12 +89,26 @@ class FirestorePullService {
               : '');
       if (stationNumber.isEmpty || month.isEmpty) continue;
       final localPk = '${stationNumber}_$month';
+      final workflow =
+          (data['workflow_status'] as String?) ??
+          (data['status'] == 'done' ? 'accepted' : 'planned');
       await _database.db.insert('maintenance', {
         'station_number': stationNumber,
         'month': month,
         'status': data['status'] ?? 'pending',
         'date_done': data['date_done'],
         'to_type': data['to_type'],
+        'workflow_status': workflow,
+        'assignee_id': data['assignee_id'],
+        'due_at': data['due_at'],
+        'regulation_id': data['regulation_id'],
+        'accepted_at': data['accepted_at'],
+        'revision': (data['revision'] as num?)?.toInt() ?? 0,
+        'result_text': data['result_text'],
+        'author_id': data['author_id'],
+        'management_id': data['management_id'],
+        'department_id': data['department_id'],
+        'crew_id': data['crew_id'],
       }, conflictAlgorithm: ConflictAlgorithm.replace);
       await _putMap(SyncEntity.maintenance, localPk, document.id);
     }
@@ -90,6 +127,22 @@ class FirestorePullService {
         'status': data['status'] ?? 'open',
         'close_comment': data['close_comment'],
         'close_date': data['close_date'],
+        'uuid': data['uuid'],
+        'category': data['category'] ?? '',
+        'author_id': data['author_id'],
+        'assignee_id': data['assignee_id'],
+        'due_at': data['due_at'],
+        'result_text': data['result_text'],
+        'critical': (data['critical'] as num?)?.toInt() ?? 0,
+        'revision': (data['revision'] as num?)?.toInt() ?? 0,
+        'workflow_status':
+            data['workflow_status'] ??
+            (data['status'] == 'closed' ? 'accepted' : 'created'),
+        'source': data['source'] ?? 'internal',
+        'source_external_id': data['source_external_id'],
+        'management_id': data['management_id'],
+        'department_id': data['department_id'],
+        'crew_id': data['crew_id'],
       },
     );
     await _replaceMappedCollection(

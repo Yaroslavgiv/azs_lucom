@@ -22,6 +22,9 @@ class RequestRepository {
     required String stationNumber,
     required String requestType,
     required String description,
+    String category = '',
+    String source = 'internal',
+    String? sourceExternalId,
   }) async {
     final now = DateTime.now().toIso8601String().substring(0, 10);
     final id = await _db.db.insert('requests', {
@@ -31,6 +34,11 @@ class RequestRepository {
       'description': description,
       'date_created': now,
       'status': 'open',
+      'category': category,
+      'workflow_status': 'created',
+      'source': source,
+      'source_external_id': sourceExternalId,
+      'uuid': '${stationNumber}_$now${sourceExternalId ?? ''}_$requestType',
     });
     final sync = _sync;
     if (sync != null) {

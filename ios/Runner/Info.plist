@@ -49,6 +49,10 @@
 	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Фото нужно, чтобы приложить снимок к заявке или ТО.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Камера нужна, чтобы сфотографировать результат работы на АЗС.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

@@ -40,14 +40,36 @@ class GeocoderService {
       _secret!.isNotEmpty;
 
   Future<GeocodeResult> geocodeStation(Station station) async {
-    if (!isConfigured) {
-      return GeocodeResult(success: false);
-    }
     final city = cityForRegion(station.region);
     final query = station.address.isNotEmpty
         ? station.address
         : 'АЗС Лукойл ${station.number}, $city';
+    final result = await lookupAddress(query);
+    if (!result.success || result.lat == null || result.lon == null) {
+      return result;
+    }
+    final name = result.name ?? 'АЗС ${station.number}';
+    await _stations.updateGeocode(
+      number: station.number,
+      name: name,
+      address: result.address ?? query,
+      lat: result.lat!,
+      lon: result.lon!,
+    );
+    return GeocodeResult(
+      success: true,
+      name: name,
+      address: result.address,
+      lat: result.lat,
+      lon: result.lon,
+    );
+  }
 
+  /// Подсказка адреса без записи в справочник. Пустой ответ не подставляет координаты.
+  Future<GeocodeResult> lookupAddress(String query) async {
+    if (!isConfigured || query.trim().isEmpty) {
+      return GeocodeResult(success: false);
+    }
     try {
       final response = await http.post(
         Uri.parse(
@@ -76,26 +98,12 @@ class GeocoderService {
       if (latStr == null || lonStr == null) {
         return GeocodeResult(success: false);
       }
-
-      final lat = double.parse(latStr);
-      final lon = double.parse(lonStr);
-      final address = first['value'] as String? ?? query;
-      final name = 'АЗС ${station.number}';
-
-      await _stations.updateGeocode(
-        number: station.number,
-        name: name,
-        address: address,
-        lat: lat,
-        lon: lon,
-      );
-
       return GeocodeResult(
         success: true,
-        name: name,
-        address: address,
-        lat: lat,
-        lon: lon,
+        name: first['value'] as String?,
+        address: first['value'] as String? ?? query,
+        lat: double.parse(latStr),
+        lon: double.parse(lonStr),
       );
     } catch (_) {
       return GeocodeResult(success: false);

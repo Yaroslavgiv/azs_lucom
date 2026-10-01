@@ -1,9 +1,12 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
 import '../database/app_database.dart';
+import 'attachment_upload_service.dart';
+import 'command_push_transport.dart';
 import 'firestore_cloud_seeder.dart';
 import 'firestore_pull_service.dart';
 import 'sync_change_publisher.dart';
@@ -30,7 +33,10 @@ class SyncService implements SyncChangePublisher {
     SyncQueueFlusher? queueFlusher,
     FirestorePullService? pullService,
     FirestoreCloudSeeder? cloudSeeder,
+    AttachmentUploadService? attachmentUpload,
   }) : _connectivity = connectivity ?? Connectivity(),
+       _attachmentUpload =
+           attachmentUpload ?? AttachmentUploadService(database),
        _logger = logger,
        _queueStore = queueStore ?? SyncQueueStore(database),
        _payloadResolver = payloadResolver ?? SyncPayloadResolver(database),
@@ -40,9 +46,15 @@ class SyncService implements SyncChangePublisher {
              queueStore: queueStore ?? SyncQueueStore(database),
              pushTransport:
                  pushTransport ??
-                 FirestoreSyncPushTransport(
-                   firestore ?? FirebaseFirestore.instance,
-                   mapStore ?? SyncMapStore(database),
+                 CommandAwarePushTransport(
+                   inner: FirestoreSyncPushTransport(
+                     firestore ?? FirebaseFirestore.instance,
+                     mapStore ?? SyncMapStore(database),
+                   ),
+                   commands: FirebaseWorkCommandGateway(
+                     FirebaseFunctions.instance,
+                   ),
+                   mapStore: mapStore ?? SyncMapStore(database),
                  ),
              logger: logger,
            ),
@@ -68,6 +80,7 @@ class SyncService implements SyncChangePublisher {
   final SyncQueueFlusher _queueFlusher;
   final FirestorePullService _pullService;
   final FirestoreCloudSeeder _cloudSeeder;
+  final AttachmentUploadService _attachmentUpload;
 
   bool _pulling = false;
 
@@ -81,12 +94,16 @@ class SyncService implements SyncChangePublisher {
     required String localPk,
     required String op,
     Map<String, Object?>? payload,
+    String? dependsOn,
+    String? idempotencyKey,
   }) async {
     await _queueStore.put(
       entity: entity,
       localPk: localPk,
       operation: op,
       payload: payload ?? const {},
+      dependsOn: dependsOn,
+      idempotencyKey: idempotencyKey,
     );
     unawaited(flushQueue());
   }
@@ -108,12 +125,15 @@ class SyncService implements SyncChangePublisher {
     required String entity,
     required String localPk,
     required Map<String, Object?> payload,
+    String? dependsOn,
   }) {
     return enqueue(
       entity: entity,
       localPk: localPk,
       op: 'upsert',
       payload: payload,
+      dependsOn: dependsOn,
+      idempotencyKey: payload['command_key'] as String?,
     );
   }
 
@@ -127,6 +147,7 @@ class SyncService implements SyncChangePublisher {
 
   Future<void> flushQueue() async {
     if (!await isOnline()) return;
+    await _attachmentUpload.uploadPending();
     await _queueFlusher.flush();
   }
 

@@ -5,8 +5,11 @@ import '../../core/constants.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/services/sync_service.dart';
 import '../../core/theme/app_colors.dart';
+import '../../shared/navigation/app_page_route.dart';
 import '../../shared/widgets/app_buttons.dart';
 import '../../shared/widgets/glass_card.dart';
+import '../notifications/notifications_page.dart';
+import '../web/web_shell.dart';
 
 class ExportPage extends ConsumerStatefulWidget {
   const ExportPage({super.key});
@@ -110,6 +113,13 @@ class _ExportPageState extends ConsumerState<ExportPage> {
                   ),
                 ),
                 IconButton(
+                  tooltip: 'Уведомления',
+                  onPressed: () => Navigator.of(
+                    context,
+                  ).push(AppPageRoute(page: const NotificationsPage())),
+                  icon: const Icon(Icons.notifications_outlined),
+                ),
+                IconButton(
                   tooltip: 'Выйти',
                   onPressed: () => ref.read(authRepositoryProvider).signOut(),
                   icon: const Icon(Icons.logout),
@@ -165,6 +175,29 @@ class _ExportPageState extends ConsumerState<ExportPage> {
                       ),
                     ),
                     const SizedBox(height: 16),
+                    AppSecondaryButton(
+                      label: 'Панель руководителя',
+                      icon: Icons.dashboard_outlined,
+                      onPressed: () => Navigator.of(
+                        context,
+                      ).push(AppPageRoute(page: const WebShell())),
+                    ),
+                    const SizedBox(height: 10),
+                    AppPrimaryButton(
+                      label: 'Отчёт по фильтру панели',
+                      icon: Icons.filter_alt_outlined,
+                      onPressed: () async {
+                        final filter = ref.read(panelFilterProvider);
+                        final service = await ref.read(
+                          exportServiceProvider.future,
+                        );
+                        await _run(
+                          () => service.shareFilteredReport(filter),
+                          'Отчёт выборки',
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 10),
                     AppPrimaryButton(
                       label: 'Заявки (заявки.xlsx)',
                       icon: Icons.description_outlined,

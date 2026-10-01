@@ -1,3 +1,5 @@
+import 'package:azs_domain/azs_domain.dart';
+
 enum StationMarkerStyle {
   completed(
     'https://storage.yandexcloud.net/eg-small-backet/markers/greenMarker-min.png',
@@ -17,8 +19,43 @@ enum StationMarkerStyle {
 StationMarkerStyle resolveStationMarkerStyle({
   required bool maintenanceDone,
   required bool highlighted,
+  bool overdue = false,
+  bool criticalRequest = false,
 }) {
-  if (maintenanceDone) return StationMarkerStyle.completed;
-  if (highlighted) return StationMarkerStyle.highlighted;
-  return StationMarkerStyle.pending;
+  final tone = resolveMapTone(
+    MapStatusInput(
+      maintenanceAccepted: maintenanceDone,
+      overdue: overdue,
+      criticalRequest: criticalRequest || highlighted,
+    ),
+  );
+  return markerStyleForTone(tone);
+}
+
+StationMarkerStyle markerStyleForTone(MapTone tone) {
+  switch (tone) {
+    case MapTone.done:
+      return StationMarkerStyle.completed;
+    case MapTone.attention:
+      return StationMarkerStyle.highlighted;
+    case MapTone.planned:
+      return StationMarkerStyle.pending;
+  }
+}
+
+String stationMarkerCaption({
+  required bool maintenanceDone,
+  required bool highlighted,
+  bool overdue = false,
+  bool criticalRequest = false,
+}) {
+  return mapToneLabel(
+    resolveMapTone(
+      MapStatusInput(
+        maintenanceAccepted: maintenanceDone,
+        overdue: overdue,
+        criticalRequest: criticalRequest || highlighted,
+      ),
+    ),
+  );
 }

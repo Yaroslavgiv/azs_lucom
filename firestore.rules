@@ -1,8 +1,174 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function profilePath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+
+    function hasProfile() {
+      return signedIn() && exists(profilePath());
+    }
+
+    function profile() {
+      return get(profilePath()).data;
+    }
+
+    function role() {
+      return profile().role;
+    }
+
+    function isAdmin() {
+      return hasProfile() && role() == 'admin';
+    }
+
+    function isLeader() {
+      return hasProfile() && (
+        role() == 'manager' ||
+        role() == 'department_head' ||
+        role() == 'management_head'
+      );
+    }
+
+    function legacyAccess() {
+      return signedIn() && !hasProfile();
+    }
+
+    function unassigned(data) {
+      return data.get('management_id', null) == null &&
+        data.get('department_id', null) == null &&
+        data.get('crew_id', null) == null;
+    }
+
+    function sameScope(data) {
+      return isAdmin() ||
+        (role() == 'management_head' && data.management_id == profile().management_id) ||
+        (role() == 'department_head' && data.department_id == profile().department_id) ||
+        (role() == 'manager' && (
+          (profile().get('department_id', null) != null &&
+            data.department_id == profile().department_id) ||
+          (profile().get('department_id', null) == null &&
+            data.management_id == profile().management_id)
+        )) ||
+        (role() == 'specialist' && (
+          data.crew_id == profile().crew_id ||
+          data.assignee_id == request.auth.uid
+        ));
+    }
+
+    function canRead(data) {
+      return legacyAccess() ||
+        (hasProfile() && (isAdmin() || (unassigned(data) && isLeader()) || sameScope(data)));
+    }
+
+    function protectedSame() {
+      return request.resource.data.get('workflow_status', null) == resource.data.get('workflow_status', null) &&
+        request.resource.data.get('assignee_id', null) == resource.data.get('assignee_id', null) &&
+        request.resource.data.get('due_at', null) == resource.data.get('due_at', null) &&
+        request.resource.data.get('revision', null) == resource.data.get('revision', null);
+    }
+
+    function orgSame() {
+      return request.resource.data.get('management_id', null) == resource.data.get('management_id', null) &&
+        request.resource.data.get('department_id', null) == resource.data.get('department_id', null) &&
+        request.resource.data.get('crew_id', null) == resource.data.get('crew_id', null);
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn() && (request.auth.uid == userId || isAdmin() || isLeader());
+      allow write: if isAdmin();
+    }
+
+    match /audit_events/{id} {
+      allow read: if isAdmin() || (isLeader() && resource.data.management_id == profile().management_id);
+      allow write: if false;
+    }
+
+    match /notifications/{id} {
+      allow read: if signedIn() && resource.data.recipient_id == request.auth.uid;
+      allow update: if signedIn() &&
+        resource.data.recipient_id == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read_at']);
+      allow create, delete: if false;
+    }
+
+    match /requests/{id} {
+      allow read: if canRead(resource.data);
+      allow create: if signedIn() &&
+        request.resource.data.workflow_status == 'created' &&
+        request.resource.data.revision == 0;
+      allow update: if canRead(resource.data) && protectedSame();
+      allow delete: if false;
+    }
+
+    match /maintenance/{id} {
+      allow read: if canRead(resource.data);
+      allow create: if signedIn() && request.resource.data.workflow_status == 'planned';
+      allow update: if canRead(resource.data) && protectedSame();
+      allow delete: if false;
+    }
+
+    match /stations/{id} {
+      allow read: if canRead(resource.data);
+      allow create: if isAdmin() || isLeader() || legacyAccess();
+      allow update: if (isAdmin() || isLeader() || legacyAccess()) && orgSame();
+      allow delete: if false;
+    }
+
+    match /reference_values/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /checklist_templates/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /managements/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /departments/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /crews/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /station_info/{id} {
+      allow read, write: if signedIn();
+    }
+
+    match /station_equipment/{id} {
+      allow read, write: if signedIn();
+    }
+
+    match /defect_acts/{id} {
+      allow read, write: if signedIn();
+    }
+
+    match /equipment_order_exports/{id} {
+      allow read, write: if signedIn();
+    }
+
+    match /comments/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update, delete: if false;
+    }
+
+    match /attachments/{id} {
+      allow read: if signedIn();
+      allow create, update: if signedIn();
+      allow delete: if false;
     }
   }
 }

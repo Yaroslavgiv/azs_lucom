@@ -1,0 +1,7 @@
+name: azs_domain
+description: Общие статусы, переходы, области доступа и правила карты системы обслуживания АЗС.
+publish_to: none
+version: 1.0.0
+
+environment:
+  sdk: ^3.11.1

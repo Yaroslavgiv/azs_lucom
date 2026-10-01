@@ -82,6 +82,7 @@ class _RecordingSyncPublisher implements SyncChangePublisher {
     required String entity,
     required String localPk,
     required Map<String, Object?> payload,
+    String? dependsOn,
   }) async {
     upserts.add((entity: entity, localPk: localPk));
   }

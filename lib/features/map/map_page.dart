@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ntk_map_view/ntk_map_view.dart';
 
+import 'package:azs_domain/azs_domain.dart';
+
 import '../../core/constants.dart';
 import '../../core/models/station.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/repositories/maintenance_repository.dart';
 import '../../core/services/location_service.dart';
+import '../../core/services/station_map_status.dart';
 import '../../core/theme/app_colors.dart';
 import '../../shared/dialogs/station_marker_dialog.dart';
 import '../../shared/widgets/app_buttons.dart';
@@ -27,6 +30,7 @@ class _MapPageState extends ConsumerState<MapPage> {
   bool _loadingMarkers = false;
   List<Station> _allStations = [];
   Map<String, MaintenanceStatus>? _statuses;
+  Map<String, MapTone> _tones = const {};
   String? _focusedRegion;
   int _spbCount = 0;
   int _novgorodCount = 0;
@@ -43,13 +47,24 @@ class _MapPageState extends ConsumerState<MapPage> {
     final markers = <MapMarker>[];
     for (final station in stations) {
       final point = LatLng(station.lat!, station.lon!);
+      final maintenanceDone = _statuses?[station.number]?.isDone == true;
+      final tone = _tones[station.number];
+      final caption = tone == null
+          ? stationMarkerCaption(
+              maintenanceDone: maintenanceDone,
+              highlighted: highlightedStationNumbers.contains(station.number),
+            )
+          : mapToneLabel(tone);
+      final crew = station.crewId == null ? '' : ' · ${station.crewId}';
       final markerTitle = station.name.isNotEmpty
-          ? '${station.name} (№${station.number})'
-          : '№${station.number}';
-      final iconUrl = resolveStationMarkerStyle(
-        maintenanceDone: _statuses?[station.number]?.isDone == true,
-        highlighted: highlightedStationNumbers.contains(station.number),
-      ).iconUrl;
+          ? '${station.name} (№${station.number}) · $caption$crew'
+          : '№${station.number} · $caption$crew';
+      final iconUrl = tone == null
+          ? resolveStationMarkerStyle(
+              maintenanceDone: maintenanceDone,
+              highlighted: highlightedStationNumbers.contains(station.number),
+            ).iconUrl
+          : markerStyleForTone(tone).iconUrl;
 
       markers.add(
         MapMarker(
@@ -90,11 +105,14 @@ class _MapPageState extends ConsumerState<MapPage> {
       final maintRepo = await ref.read(maintenanceRepositoryProvider.future);
       final stations = await stationsRepo.getAllWithCoordinates();
       final statuses = await maintRepo.getAllStatusesForCurrentMonth();
+      final database = await ref.read(databaseProvider.future);
+      final tones = await StationMapStatusService(database).load();
 
       if (mounted) {
         setState(() {
           _allStations = stations;
           _statuses = statuses;
+          _tones = tones;
           _spbCount = stations.where((s) => s.region == regionSpb).length;
           _novgorodCount = stations
               .where((s) => s.region == regionNovgorod)
@@ -235,6 +253,8 @@ class _MapPageState extends ConsumerState<MapPage> {
                   ),
                 ),
               if (_mapReady)
+                const Positioned(left: 16, bottom: 16, child: _MapLegend()),
+              if (_mapReady)
                 Positioned(
                   right: 16,
                   bottom: 16,
@@ -260,6 +280,39 @@ class _MapPageState extends ConsumerState<MapPage> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _MapLegend extends StatelessWidget {
+  const _MapLegend();
+
+  @override
+  Widget build(BuildContext context) {
+    const rows = [
+      (AppColors.success, 'ТО выполнено'),
+      (AppColors.warning, 'ТО запланировано'),
+      (AppColors.error, 'Требуется внимание'),
+    ];
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final row in rows)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.circle, size: 10, color: row.$1),
+                  const SizedBox(width: 6),
+                  Text(row.$2),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

@@ -4,8 +4,11 @@ import 'package:excel/excel.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import 'package:azs_domain/azs_domain.dart';
+
 import '../constants.dart';
 import '../database/app_database.dart';
+import 'filtered_report.dart';
 import 'sync_change_publisher.dart';
 import 'sync_service.dart';
 
@@ -91,6 +94,33 @@ class ExportService {
       rows: rows.isEmpty
           ? [
               {'Сообщение': 'Нет данных по ТО'},
+            ]
+          : rows,
+    );
+  }
+
+  Future<void> shareFilteredReport(PanelFilter filter) async {
+    await ensureFreshData();
+    final rows = await FilteredReportBuilder(
+      _db,
+    ).build(filter: filter, generatedAt: DateTime.now());
+    await _shareExcel(
+      filename: 'отчёт_выборки.xlsx',
+      sheetName: 'Выборка',
+      headers: const [
+        'kind',
+        'id',
+        'station_number',
+        'region',
+        'status',
+        'assignee_id',
+        'overdue',
+        'generated_at',
+        'synced_at',
+      ],
+      rows: rows.isEmpty
+          ? [
+              {'Сообщение': 'Нет строк по выбранному фильтру'},
             ]
           : rows,
     );
