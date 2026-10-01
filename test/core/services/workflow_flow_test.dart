@@ -370,10 +370,7 @@ void main() {
       requiresReview: true,
     );
     expect(second.version, 2);
-    final rows = await database.db.query(
-      'contract_rules',
-      where: 'active = 1',
-    );
+    final rows = await database.db.query('contract_rules', where: 'active = 1');
     expect(rows, hasLength(1));
     expect(rows.single['version'], 2);
     expect(rows.single['duration_hours'], isNull);
