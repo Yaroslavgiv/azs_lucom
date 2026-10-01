@@ -47,3 +47,19 @@ DateTime? contractualDueAt(DateTime createdAt, int? durationHours) {
   if (durationHours == null || durationHours <= 0) return null;
   return createdAt.toUtc().add(Duration(hours: durationHours));
 }
+
+String? validateContractRule({required String category, int? durationHours}) {
+  if (category.trim().isEmpty) return 'Укажите категорию';
+  if (durationHours != null && durationHours <= 0) {
+    return 'Длительность должна быть больше нуля';
+  }
+  return null;
+}
+
+int nextContractRuleVersion(Iterable<int> versions) {
+  var maxVersion = 0;
+  for (final version in versions) {
+    if (version > maxVersion) maxVersion = version;
+  }
+  return maxVersion + 1;
+}

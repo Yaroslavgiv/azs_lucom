@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../database/app_database.dart';
 import '../repositories/attachment_repository.dart';
+import '../repositories/contract_rule_repository.dart';
 import '../repositories/defect_act_repository.dart';
 import '../repositories/equipment_repository.dart';
 import '../repositories/maintenance_repository.dart';
@@ -97,6 +98,14 @@ final attachmentRepositoryProvider = FutureProvider<AttachmentRepository>((
   final database = await ref.watch(databaseProvider.future);
   final syncService = await ref.watch(syncServiceProvider.future);
   return AttachmentRepository(database, sync: syncService);
+});
+
+final contractRuleRepositoryProvider = FutureProvider<ContractRuleRepository>((
+  ref,
+) async {
+  final database = await ref.watch(databaseProvider.future);
+  final syncService = await ref.watch(syncServiceProvider.future);
+  return ContractRuleRepository(database, sync: syncService);
 });
 
 final notificationRepositoryProvider = FutureProvider<NotificationRepository>((

@@ -23,4 +23,5 @@ abstract final class SyncEntity {
   static const attachments = 'attachments';
   static const notifications = 'notifications';
   static const userProfiles = 'user_profiles';
+  static const contractRules = 'contract_rules';
 }

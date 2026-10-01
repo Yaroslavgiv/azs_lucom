@@ -23,6 +23,8 @@ class SyncPayloadResolver {
         return _stationInfoPayload(localPk);
       case SyncEntity.defectActs:
         return _defectActPayload(int.parse(localPk));
+      case SyncEntity.contractRules:
+        return _contractRulePayload(localPk);
       default:
         return {};
     }
@@ -124,6 +126,25 @@ class SyncPayloadResolver {
     );
     if (rows.isEmpty) return {};
     return Map<String, Object?>.from(rows.first)..remove('id');
+  }
+
+  Future<Map<String, Object?>> _contractRulePayload(String id) async {
+    final rows = await _database.db.query(
+      'contract_rules',
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (rows.isEmpty) return {};
+    final row = rows.first;
+    return {
+      'category': row['category'],
+      'duration_hours': row['duration_hours'],
+      'requires_review': row['requires_review'],
+      'effective_from': row['effective_from'],
+      'version': row['version'],
+      'active': row['active'],
+    };
   }
 
   Future<Map<String, Object?>> _stationPayload(String number) async {

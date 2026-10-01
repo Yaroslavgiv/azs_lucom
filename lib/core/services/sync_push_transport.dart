@@ -59,7 +59,8 @@ class FirestoreSyncPushTransport implements SyncPushTransport {
   bool _usesLocalIdAsRemoteId(String entity) {
     return entity == SyncEntity.stations ||
         entity == SyncEntity.stationInfo ||
-        entity == SyncEntity.maintenance;
+        entity == SyncEntity.maintenance ||
+        entity == SyncEntity.contractRules;
   }
 
   Future<void> _saveMapping(SyncQueueItem item, String remoteId) {

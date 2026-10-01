@@ -14,6 +14,7 @@ class FirestorePullService {
 
   Future<void> pullAll() async {
     await _pullStations();
+    await _pullContractRules();
     await _pullStationInfo();
     await _pullMaintenance();
     await _replaceMappedCollections();
@@ -60,6 +61,26 @@ class FirestorePullService {
         'input_method': data['input_method'] ?? previous?['input_method'],
       }, conflictAlgorithm: ConflictAlgorithm.replace);
       await _putMap(SyncEntity.stations, document.id, document.id);
+    }
+  }
+
+  Future<void> _pullContractRules() async {
+    final snapshot = await _firestore
+        .collection(SyncEntity.contractRules)
+        .get();
+    if (snapshot.docs.isEmpty) return;
+    await _database.db.delete('contract_rules');
+    for (final document in snapshot.docs) {
+      final data = document.data();
+      await _database.db.insert('contract_rules', {
+        'id': document.id,
+        'category': data['category'] ?? '',
+        'duration_hours': (data['duration_hours'] as num?)?.toInt(),
+        'requires_review': (data['requires_review'] as num?)?.toInt() ?? 0,
+        'effective_from': data['effective_from'] ?? '',
+        'version': (data['version'] as num?)?.toInt() ?? 1,
+        'active': (data['active'] as num?)?.toInt() ?? 0,
+      });
     }
   }
 

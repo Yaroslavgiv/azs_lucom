@@ -108,7 +108,8 @@ service cloud.firestore {
     match /requests/{id} {
       allow read: if canRead(resource.data);
       allow create: if signedIn() &&
-        request.resource.data.workflow_status == 'created' &&
+        (request.resource.data.workflow_status == 'created' ||
+          request.resource.data.workflow_status == 'unassigned') &&
         request.resource.data.revision == 0;
       allow update: if canRead(resource.data) && protectedSame();
       allow delete: if false;
@@ -116,7 +117,10 @@ service cloud.firestore {
 
     match /maintenance/{id} {
       allow read: if canRead(resource.data);
-      allow create: if signedIn() && request.resource.data.workflow_status == 'planned';
+      allow create: if signedIn() && (
+        request.resource.data.workflow_status == 'planned' ||
+        request.resource.data.workflow_status == 'not_done'
+      );
       allow update: if canRead(resource.data) && protectedSame();
       allow delete: if false;
     }
@@ -126,6 +130,11 @@ service cloud.firestore {
       allow create: if isAdmin() || isLeader() || legacyAccess();
       allow update: if (isAdmin() || isLeader() || legacyAccess()) && orgSame();
       allow delete: if false;
+    }
+
+    match /contract_rules/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
     }
 
     match /reference_values/{id} {

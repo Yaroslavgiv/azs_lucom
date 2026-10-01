@@ -129,6 +129,11 @@ class SqlitePanelReader {
       'reference_values',
       orderBy: 'kind, sort_order',
     );
+    final rules = await _db.db.query(
+      'contract_rules',
+      where: 'active = 1',
+      orderBy: 'category',
+    );
     final users = await _db.db.query('user_profiles', orderBy: 'display_name');
     return PanelSnapshot(
       metrics: summarizePanel(work),
@@ -143,6 +148,7 @@ class SqlitePanelReader {
             name: row['name'] as String,
             active: (row['active'] as int? ?? 1) == 1,
           ),
+        for (final row in rules) _contractDirectory(row),
       ],
       users: [
         for (final row in users)
@@ -172,6 +178,7 @@ class FirestorePanelReader {
     final audit = await _firestore.collection('audit_events').limit(100).get();
     final users = await _firestore.collection('users').get();
     final references = await _firestore.collection('reference_values').get();
+    final rules = await _firestore.collection('contract_rules').get();
     final work = <PanelWorkItem>[
       for (final doc in requests.docs)
         if (filter.matches(_requestItem(doc.id, doc.data())))
@@ -213,6 +220,15 @@ class FirestorePanelReader {
             name: '${doc.data()['name'] ?? ''}',
             active: doc.data()['active'] != false,
           ),
+        for (final doc in rules.docs)
+          if (doc.data()['active'] == 1 || doc.data()['active'] == true)
+            _contractDirectory({
+              'id': doc.id,
+              'category': doc.data()['category'],
+              'duration_hours': doc.data()['duration_hours'],
+              'requires_review': doc.data()['requires_review'],
+              'version': doc.data()['version'],
+            }),
       ],
       users: [
         for (final doc in users.docs)
@@ -270,4 +286,18 @@ class FirestorePanelReader {
       assigneeId: data['assignee_id'] as String?,
     );
   }
+}
+
+DirectoryEntry _contractDirectory(Map<String, Object?> row) {
+  final hours = row['duration_hours'];
+  final review = row['requires_review'] == 1 || row['requires_review'] == true;
+  final duration = hours == null ? 'срок не задан' : '$hours ч';
+  return DirectoryEntry(
+    id: '${row['id']}',
+    kind: 'Срок договора',
+    name:
+        '${row['category']} · $duration · версия ${row['version'] ?? 1}'
+        '${review ? ' · с проверкой' : ''}',
+    active: true,
+  );
 }

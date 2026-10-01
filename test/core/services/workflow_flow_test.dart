@@ -1,4 +1,5 @@
 import 'package:azs_app/core/models/station.dart';
+import 'package:azs_app/core/repositories/contract_rule_repository.dart';
 import 'package:azs_app/core/repositories/reference_repository.dart';
 import 'package:azs_app/core/repositories/request_repository.dart';
 import 'package:azs_app/core/repositories/station_repository.dart';
@@ -21,6 +22,7 @@ void main() {
     managementId: 'mgmt',
     departmentId: 'dept',
   );
+  const admin = AccessSubject(userId: 'admin', role: AppRole.admin);
   const specialist = AccessSubject(
     userId: 'spec',
     role: AppRole.specialist,
@@ -349,6 +351,41 @@ void main() {
     expect(row.single['workflow_status'], 'unassigned');
     expect(row.single['assignee_id'], isNull);
     expect(row.single['due_at'], isNull);
+  });
+
+  test('admin publishes a new contract rule version', () async {
+    final database = await openTestDatabase();
+    addTearDown(database.close);
+    final rules = ContractRuleRepository(database);
+    await rules.publishVersion(
+      actor: admin,
+      category: 'repair',
+      durationHours: 12,
+      requiresReview: false,
+    );
+    final second = await rules.publishVersion(
+      actor: admin,
+      category: 'repair',
+      durationHours: null,
+      requiresReview: true,
+    );
+    expect(second.version, 2);
+    final rows = await database.db.query(
+      'contract_rules',
+      where: 'active = 1',
+    );
+    expect(rows, hasLength(1));
+    expect(rows.single['version'], 2);
+    expect(rows.single['duration_hours'], isNull);
+    expect(
+      () => rules.publishVersion(
+        actor: specialist,
+        category: 'repair',
+        durationHours: 1,
+        requiresReview: false,
+      ),
+      throwsA(isA<ContractRuleDenied>()),
+    );
   });
 
   test('contract rule sets the due date and review flag', () async {

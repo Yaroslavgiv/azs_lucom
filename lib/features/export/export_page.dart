@@ -8,6 +8,7 @@ import '../../core/theme/app_colors.dart';
 import '../../shared/navigation/app_page_route.dart';
 import '../../shared/widgets/app_buttons.dart';
 import '../../shared/widgets/glass_card.dart';
+import '../contract/contract_rules_page.dart';
 import '../notifications/notifications_page.dart';
 import '../web/web_shell.dart';
 
@@ -111,6 +112,13 @@ class _ExportPageState extends ConsumerState<ExportPage> {
                     'Экспорт Excel',
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
+                ),
+                IconButton(
+                  tooltip: 'Сроки договора',
+                  onPressed: () => Navigator.of(
+                    context,
+                  ).push(AppPageRoute(page: const ContractRulesPage())),
+                  icon: const Icon(Icons.schedule_outlined),
                 ),
                 IconButton(
                   tooltip: 'Уведомления',

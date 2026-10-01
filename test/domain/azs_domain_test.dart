@@ -263,6 +263,16 @@ void main() {
         contractualDueAt(DateTime.utc(2026, 1, 1), 48),
         DateTime.utc(2026, 1, 3),
       );
+      expect(validateContractRule(category: ' ', durationHours: 1), isNotNull);
+      expect(
+        validateContractRule(category: 'repair', durationHours: 0),
+        isNotNull,
+      );
+      expect(
+        validateContractRule(category: 'repair', durationHours: null),
+        isNull,
+      );
+      expect(nextContractRuleVersion(const [1, 3]), 4);
     });
   });
 
