@@ -368,6 +368,12 @@ void main() {
       );
     });
 
+    test('department manager can assign the station specialist', () {
+      expect(canAssignStationSpecialist(departmentHead, station), isTrue);
+      expect(canAssignStationSpecialist(specialist, station), isFalse);
+      expect(canAssignStationSpecialist(foreignHead, station), isFalse);
+    });
+
     test('specialist cannot create a station or read audit', () {
       expect(canCreateStation(specialist), isFalse);
       expect(canCreateStation(departmentHead), isTrue);

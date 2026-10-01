@@ -46,6 +46,20 @@ class SyncPayloadResolver {
       'status': row['status'],
       'close_comment': row['close_comment'],
       'close_date': row['close_date'],
+      'uuid': row['uuid'],
+      'category': row['category'],
+      'author_id': row['author_id'],
+      'assignee_id': row['assignee_id'],
+      'due_at': row['due_at'],
+      'result_text': row['result_text'],
+      'critical': row['critical'],
+      'revision': row['revision'],
+      'workflow_status': row['workflow_status'],
+      'requires_review': row['requires_review'],
+      'source': row['source'],
+      'management_id': row['management_id'],
+      'department_id': row['department_id'],
+      'crew_id': row['crew_id'],
     };
   }
 
@@ -69,6 +83,8 @@ class SyncPayloadResolver {
       'status': row['status'],
       'date_done': row['date_done'],
       'to_type': row['to_type'],
+      'workflow_status': row['workflow_status'],
+      'assignee_id': row['assignee_id'],
     };
   }
 
@@ -129,6 +145,7 @@ class SyncPayloadResolver {
       'management_id': row['management_id'],
       'department_id': row['department_id'],
       'crew_id': row['crew_id'],
+      'specialist_id': row['specialist_id'],
       'active': row['active'],
       'created_by': row['created_by'],
       'created_at': row['created_at'],

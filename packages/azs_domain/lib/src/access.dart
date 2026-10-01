@@ -214,6 +214,11 @@ bool canCreateStation(AccessSubject actor) =>
 bool canChangeCrew(AccessSubject actor, OrgStation station) =>
     actor.active && actor.isLeader && canReadStation(actor, station);
 
+bool canAssignStationSpecialist(AccessSubject actor, OrgStation station) {
+  if (!actor.active || !canReadStation(actor, station)) return false;
+  return actor.role == AppRole.admin || actor.isLeader;
+}
+
 /// Перевод между отделами и управлениями блокируется, пока заказчик
 /// не согласует судьбу открытых заявок и ТО.
 bool canReassignCrew({

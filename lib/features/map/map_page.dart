@@ -6,6 +6,7 @@ import 'package:azs_domain/azs_domain.dart';
 
 import '../../core/constants.dart';
 import '../../core/models/station.dart';
+import '../../core/models/station_access.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/repositories/maintenance_repository.dart';
 import '../../core/services/location_service.dart';
@@ -101,7 +102,11 @@ class _MapPageState extends ConsumerState<MapPage> {
     try {
       final stationsRepo = await ref.read(stationRepositoryProvider.future);
       final maintRepo = await ref.read(maintenanceRepositoryProvider.future);
-      final stations = await stationsRepo.getAllWithCoordinates();
+      final actor = await ref.read(sessionProfileProvider.future);
+      final stations = stationsVisibleTo(
+        actor,
+        await stationsRepo.getAllWithCoordinates(),
+      );
       final statuses = await maintRepo.getAllStatusesForCurrentMonth();
       final database = await ref.read(databaseProvider.future);
       await LocalWorkService(database).rollMaintenanceMonths();

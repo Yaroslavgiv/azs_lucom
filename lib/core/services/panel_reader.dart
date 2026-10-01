@@ -91,6 +91,7 @@ class SqlitePanelReader {
                 departmentId: row['department_id'] as String?,
                 crewId: row['crew_id'] as String?,
                 region: row['region'] as String?,
+                specialistId: row['specialist_id'] as String?,
               ),
             ))
           OrgStation(
@@ -99,6 +100,7 @@ class SqlitePanelReader {
             departmentId: row['department_id'] as String?,
             crewId: row['crew_id'] as String?,
             region: row['region'] as String?,
+            specialistId: row['specialist_id'] as String?,
           ),
     ];
     final auditRows = await _db.db.query(

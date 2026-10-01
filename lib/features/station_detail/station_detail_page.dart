@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/models/station.dart';
+import '../../core/models/station_access.dart';
 import '../../core/providers/app_providers.dart';
+import '../../core/services/local_work_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../shared/dialogs/request_dialogs.dart';
 import '../../shared/dialogs/to_dialog.dart';
@@ -86,6 +88,19 @@ class StationDetailPage extends ConsumerWidget {
                     showNumberBadge: true,
                   ),
                 ),
+                const SizedBox(height: 8),
+                Text(
+                  'Специалист: ${station.specialistId ?? 'не назначен'}',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                if (_canAssign(ref, station)) ...[
+                  const SizedBox(height: 8),
+                  AppSecondaryButton(
+                    label: 'Закрепить специалиста',
+                    icon: Icons.person_pin_circle_outlined,
+                    onPressed: () => _pickSpecialist(context, ref, station),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 Row(
                   children: [
@@ -297,5 +312,61 @@ class StationDetailPage extends ConsumerWidget {
         ),
       ),
     );
+  }
+}
+
+bool _canAssign(WidgetRef ref, Station station) {
+  final actor = ref.watch(sessionProfileProvider).asData?.value;
+  if (actor == null) return false;
+  return canAssignStationSpecialist(actor, orgStationOf(station));
+}
+
+Future<void> _pickSpecialist(
+  BuildContext context,
+  WidgetRef ref,
+  Station station,
+) async {
+  final profiles = await ref.read(profileRepositoryProvider.future);
+  final specialists = await profiles.specialistsFor(orgStationOf(station));
+  if (!context.mounted) return;
+  if (specialists.isEmpty) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('В отделе нет специалистов')));
+    return;
+  }
+  final selected = await showDialog<String>(
+    context: context,
+    builder: (context) => SimpleDialog(
+      title: const Text('Специалист станции'),
+      children: [
+        for (final specialist in specialists)
+          SimpleDialogOption(
+            onPressed: () => Navigator.of(context).pop(specialist.userId),
+            child: Text(specialist.userId),
+          ),
+      ],
+    ),
+  );
+  if (selected == null || !context.mounted) return;
+  try {
+    final actor = await ref.read(sessionProfileProvider.future);
+    if (actor == null) return;
+    final work = await ref.read(localWorkServiceProvider.future);
+    await work.assignStationSpecialist(
+      actor: actor,
+      stationNumber: station.number,
+      specialistUserId: selected,
+    );
+    ref.invalidate(_stationProvider(station.number));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Специалист закреплён')));
+  } on WorkDenied catch (error) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(error.message)));
   }
 }

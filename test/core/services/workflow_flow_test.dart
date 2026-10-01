@@ -260,6 +260,67 @@ void main() {
     expect(rows.single['name'], 'Ремонт');
   });
 
+  test(
+    'manager assigns the station specialist and opens the request',
+    () async {
+      final database = await openTestDatabase();
+      addTearDown(database.close);
+      await StationRepository(database).upsert(
+        Station(
+          number: '1',
+          name: 'АЗС',
+          address: '',
+          region: 'spb',
+          managementId: 'mgmt',
+          departmentId: 'dept',
+          crewId: 'crew',
+        ),
+      );
+      await database.db.insert('user_profiles', {
+        'user_id': 'spec',
+        'display_name': 'Специалист',
+        'role': 'specialist',
+        'department_id': 'dept',
+        'crew_id': 'crew',
+        'active': 1,
+        'contact': '',
+      });
+      final work = LocalWorkService(database);
+      final id = await work.createRequest(
+        actor: head,
+        stationNumber: '1',
+        requestType: 'Осмотр',
+        description: 'Пока без специалиста',
+      );
+      await work.assignStationSpecialist(
+        actor: head,
+        stationNumber: '1',
+        specialistUserId: 'spec',
+      );
+      final station = await database.db.query(
+        'stations',
+        where: 'number = ?',
+        whereArgs: ['1'],
+      );
+      final request = await database.db.query(
+        'requests',
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+      expect(station.single['specialist_id'], 'spec');
+      expect(request.single['workflow_status'], 'created');
+      expect(request.single['assignee_id'], 'spec');
+      expect(
+        () => work.assignStationSpecialist(
+          actor: specialist,
+          stationNumber: '1',
+          specialistUserId: 'spec',
+        ),
+        throwsA(isA<WorkDenied>()),
+      );
+    },
+  );
+
   test('missing specialist leaves the request unassigned', () async {
     final database = await openTestDatabase();
     addTearDown(database.close);

@@ -41,6 +41,15 @@ class ProfileRepository {
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
+  Future<List<AccessSubject>> specialistsFor(OrgStation station) async {
+    final rows = await _db.db.query('user_profiles', where: 'active = 1');
+    return rows.map(_subject).where((subject) {
+      if (subject.role != AppRole.specialist) return false;
+      if (_same(subject.departmentId, station.departmentId)) return true;
+      return _same(subject.crewId, station.crewId);
+    }).toList();
+  }
+
   Future<List<AccessSubject>> leadersInScope(OrgStation station) async {
     final rows = await _db.db.query('user_profiles', where: 'active = 1');
     return rows.map(_subject).where((subject) {
@@ -61,3 +70,6 @@ class ProfileRepository {
     );
   }
 }
+
+bool _same(String? left, String? right) =>
+    left != null && left.isNotEmpty && left == right;

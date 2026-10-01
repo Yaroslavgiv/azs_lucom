@@ -1,3 +1,4 @@
+import 'package:azs_domain/azs_domain.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../database/app_database.dart';
@@ -28,10 +29,7 @@ class MaintenanceRepository {
   final AppDatabase _db;
   final SyncChangePublisher? _sync;
 
-  String _currentMonth() {
-    final n = DateTime.now();
-    return '${n.year}-${n.month.toString().padLeft(2, '0')}';
-  }
+  String _currentMonth() => moscowServiceMonth(DateTime.now()).key;
 
   Future<MaintenanceStatus> getStatus(String stationNumber) async {
     final month = _currentMonth();

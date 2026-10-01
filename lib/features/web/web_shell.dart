@@ -93,7 +93,7 @@ class _WebShellState extends ConsumerState<WebShell> {
                       ListTile(
                         title: Text('АЗС ${station.number}'),
                         subtitle: Text(
-                          'Бригада: ${station.crewId ?? 'не закреплена'} · ${station.region ?? ''}',
+                          'Специалист: ${station.specialistId ?? 'не назначен'} · ${station.region ?? ''}',
                         ),
                       ),
                   if (_section == 3)
@@ -154,7 +154,7 @@ class _Overview extends StatelessWidget {
       ('Открытые заявки', '${metrics.openRequests}'),
       ('Просроченные', '${metrics.overdueRequests}'),
       ('Требуют внимания', '${metrics.attentionStations}'),
-      ('ТО на проверке', '${metrics.maintenanceWaitingAcceptance}'),
+      ('ТО не закрыто', '${metrics.maintenanceWaitingAcceptance}'),
       ('ТО выполнено', '${metrics.maintenanceAccepted}'),
     ];
     return Wrap(

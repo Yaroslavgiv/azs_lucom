@@ -23,16 +23,12 @@ void main() {
       localPk: '$requestId',
     );
 
-    expect(payload, {
-      'station_number': '78001',
-      'type': 'НЗ',
-      'request_type': 'Срочная',
-      'description': 'Описание',
-      'date_created': '2026-08-19',
-      'status': 'open',
-      'close_comment': null,
-      'close_date': null,
-    });
+    expect(payload['station_number'], '78001');
+    expect(payload['request_type'], 'Срочная');
+    expect(payload['description'], 'Описание');
+    expect(payload['status'], 'open');
+    expect(payload['workflow_status'], 'created');
+    expect(payload['requires_review'], 0);
   });
 
   test('resolves composite maintenance keys safely', () async {

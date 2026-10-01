@@ -51,6 +51,9 @@ class FirestorePullService {
         'crew_id': data.containsKey('crew_id')
             ? data['crew_id']
             : previous?['crew_id'],
+        'specialist_id': data.containsKey('specialist_id')
+            ? data['specialist_id']
+            : previous?['specialist_id'],
         'active': (data['active'] as num?)?.toInt() ?? previous?['active'] ?? 1,
         'created_by': data['created_by'] ?? previous?['created_by'],
         'created_at': data['created_at'] ?? previous?['created_at'],
@@ -143,6 +146,7 @@ class FirestorePullService {
         'management_id': data['management_id'],
         'department_id': data['department_id'],
         'crew_id': data['crew_id'],
+        'requires_review': (data['requires_review'] as num?)?.toInt() ?? 0,
       },
     );
     await _replaceMappedCollection(

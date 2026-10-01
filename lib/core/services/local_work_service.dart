@@ -428,6 +428,62 @@ class LocalWorkService {
     return true;
   }
 
+  Future<void> assignStationSpecialist({
+    required AccessSubject actor,
+    required String stationNumber,
+    required String specialistUserId,
+  }) async {
+    final station = await _station(stationNumber);
+    if (!canAssignStationSpecialist(actor, station)) {
+      throw WorkDenied('Назначать специалиста может руководитель области');
+    }
+    final specialist = await ProfileRepository(_db).find(specialistUserId);
+    if (specialist == null ||
+        !specialist.active ||
+        specialist.role != AppRole.specialist) {
+      throw WorkDenied('Укажите действующего специалиста');
+    }
+    await _db.db.update(
+      'stations',
+      {'specialist_id': specialistUserId},
+      where: 'number = ?',
+      whereArgs: [stationNumber],
+    );
+    final month = moscowServiceMonth(_clock()).key;
+    await _db.db.update(
+      'maintenance',
+      {'assignee_id': specialistUserId},
+      where:
+          'station_number = ? AND month = ? AND workflow_status IN (?, ?, ?)',
+      whereArgs: [stationNumber, month, 'not_done', 'planned', 'assigned'],
+    );
+    await _db.db.update(
+      'requests',
+      {'assignee_id': specialistUserId, 'workflow_status': 'created'},
+      where: 'station_number = ? AND workflow_status = ?',
+      whereArgs: [stationNumber, 'unassigned'],
+    );
+    await _audit(
+      actor: actor,
+      station: station,
+      entityType: 'station',
+      entityId: stationNumber,
+      action: 'assign_specialist',
+      previousValue: station.specialistId,
+      nextValue: specialistUserId,
+    );
+    await _notifyUsers(
+      recipients: [specialistUserId],
+      actor: actor,
+      type: 'station_assigned',
+      title: 'Вам назначена АЗС',
+      entityType: 'station',
+      entityId: stationNumber,
+      station: station,
+    );
+    await _publishEntity(SyncEntity.stations, stationNumber);
+  }
+
   Future<void> rollMaintenanceMonths() async {
     final current = moscowServiceMonth(_clock());
     final stations = await _db.db.query('stations');

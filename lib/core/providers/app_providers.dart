@@ -6,9 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/station.dart';
+import '../models/station_access.dart';
 import '../repositories/maintenance_repository.dart';
 import '../services/equipment_seed_service.dart';
 import '../services/fcm_registrar.dart';
+import '../services/local_work_service.dart';
 import '../services/operational_data_seed_service.dart';
 import '../services/panel_reader.dart';
 import '../services/station_seed_service.dart';
@@ -31,6 +33,7 @@ final appInitProvider = FutureProvider<void>((ref) async {
   await StationSeedService(db, stations).seedIfNeeded();
   await OperationalDataSeedService(db).seedIfNeeded();
   await EquipmentSeedService(db).seedIfNeeded();
+  await LocalWorkService(db).rollMaintenanceMonths();
 
   final user = ref.watch(authRepositoryProvider).currentUser;
   if (user == null) return;
@@ -40,6 +43,7 @@ final appInitProvider = FutureProvider<void>((ref) async {
   try {
     await sync.seedCloudIfEmpty();
     final status = await sync.pullAll();
+    await LocalWorkService(db).rollMaintenanceMonths();
     ref.read(syncStatusProvider.notifier).state = status;
   } catch (_) {
     ref.read(syncStatusProvider.notifier).state = SyncStatus.error;
@@ -113,7 +117,9 @@ final stationsByRegionProvider = FutureProvider.family<List<Station>, String>((
 ) async {
   await ref.watch(appInitProvider.future);
   final repo = await ref.watch(stationRepositoryProvider.future);
-  return repo.getByRegion(region);
+  final actor = await ref.watch(sessionProfileProvider.future);
+  final stations = await repo.getByRegion(region);
+  return stationsVisibleTo(actor, stations);
 });
 
 class MaintenanceListFilter {
@@ -139,7 +145,14 @@ final maintenanceListProvider =
     ) async {
       await ref.watch(appInitProvider.future);
       final repo = await ref.watch(maintenanceRepositoryProvider.future);
-      return repo.getStationsByRegion(region: filter.region, done: filter.done);
+      final actor = await ref.watch(sessionProfileProvider.future);
+      final items = await repo.getStationsByRegion(
+        region: filter.region,
+        done: filter.done,
+      );
+      return items
+          .where((item) => stationsVisibleTo(actor, [item.station]).isNotEmpty)
+          .toList();
     });
 
 Future<SyncStatus> runManualSync(WidgetRef ref) async {
@@ -148,6 +161,8 @@ Future<SyncStatus> runManualSync(WidgetRef ref) async {
   try {
     await sync.seedCloudIfEmpty();
     final status = await sync.pullAll();
+    final database = await ref.read(databaseProvider.future);
+    await LocalWorkService(database).rollMaintenanceMonths();
     ref.read(syncStatusProvider.notifier).state = status;
     return status;
   } catch (_) {
