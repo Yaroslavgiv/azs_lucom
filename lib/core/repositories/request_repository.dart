@@ -18,6 +18,26 @@ class RequestRepository {
     return rows.map(RequestItem.fromMap).toList();
   }
 
+  Future<List<RequestItem>> getAll({String? status}) async {
+    final rows = status == null
+        ? await _db.db.query('requests', orderBy: 'date_created DESC, id DESC')
+        : await _db.db.query(
+            'requests',
+            where: 'status = ?',
+            whereArgs: [status],
+            orderBy: 'date_created DESC, id DESC',
+          );
+    return rows.map(RequestItem.fromMap).toList();
+  }
+
+  Future<int> countByStatus(String status) async {
+    final rows = await _db.db.rawQuery(
+      'SELECT COUNT(*) AS c FROM requests WHERE status = ?',
+      [status],
+    );
+    return (rows.first['c'] as int?) ?? 0;
+  }
+
   Future<int> add({
     required String stationNumber,
     required String requestType,

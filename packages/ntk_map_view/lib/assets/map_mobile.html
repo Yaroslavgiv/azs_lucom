@@ -1,235 +1,1527 @@
-<!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
     <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"/>
-    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel='stylesheet' href='maplibre-gl.css'/>
+    <script src='maplibre-gl.js'></script>
     <style>
-        html, body, #map {
+        html, body {
             height: 100%;
-            width: 100%;
-            margin: 0;
             padding: 0;
+            margin: 0;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
             background: transparent;
         }
-        .azs-marker {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            cursor: pointer;
+
+        .ntk-popup {
+            max-width: 420px;
         }
-        .azs-marker-title {
-            background: rgba(0, 0, 0, 0.72);
-            color: #fff;
-            font: 10px/1.2 sans-serif;
-            padding: 2px 6px;
-            border-radius: 6px;
-            max-width: 150px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            margin-bottom: 2px;
+
+        .ntk-popup h2, .ntk-popup h3 {
+            margin: 6px 0;
         }
-        .azs-user-dot {
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            background: #4da3ff;
-            border: 2px solid #fff;
-            box-shadow: 0 0 0 1px rgba(77, 163, 255, 0.4);
+
+        .ntk-popup table {
+            border-collapse: collapse;
+        }
+
+        .ntk-popup td {
+            padding: 4px;
+        }
+
+        .ntk-popup td button {
+            pointer-events: auto;
+            touch-action: manipulation;
+        }
+
+        .ntk-marker-img {
+            width: 310px;
+            height: 150px;
+            object-fit: cover;
         }
     </style>
+
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1">
 </head>
 <body>
 <div id="map"></div>
+
+<style>
+    #marker {
+        background-image: url('markers/purple-order-marker.png');
+        background-size: cover;
+        width: 35px;
+        height: 35px;
+        cursor: pointer;
+    }
+</style>
+
 <script>
-    const osmStyle = {
-        version: 8,
-        sources: {
-            osm: {
-                type: 'raster',
-                tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-                tileSize: 256,
-                attribution: '© OpenStreetMap contributors'
-            }
-        },
-        layers: [{id: 'osm', type: 'raster', source: 'osm'}]
+    let markers = [];
+    let markerById = new Map();
+    let polylines = [];
+    let polylineById = new Map();
+    let routeSourceId = 'ntk-route';
+    let routeLayerId = 'ntk-route-line';
+    let currentPosMarker = null;
+
+    let markersGeoJSON = {
+        type: 'FeatureCollection',
+        features: []
     };
 
-    let map = null;
-    let markers = [];
-    let userMarker = null;
+    let noClusterMarkersGeoJSON = {
+        type: 'FeatureCollection',
+        features: []
+    };
 
-    function post(payload) {
+    const currentPosSrcId = 'ntk-accuracy-src';
+    const currentPosLayerId = 'ntk-accuracy-layer';
+
+    let loadedIcons = new Map();
+    let pendingMarkers = [];
+
+    function getIconNameFromUrl(url) {
+        let hash = 0;
+        for (let i = 0; i < url.length; i++) {
+            const char = url.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // Convert to 32bit integer
+        }
+        return 'icon-' + Math.abs(hash).toString(36);
+    }
+
+    const NTK_DEFAULT_MARKER_URL = 'markers/purple-order-marker.png';
+    const NTK_ORDER_CIRCLE_COLOR = '#602FC8';
+    const NTK_ORDER_CIRCLE_RADIUS = 15;
+    const NTK_UNCLUSTERED_CIRCLE_FILTER = [
+        'all',
+        ['!', ['has', 'point_count']],
+        ['any', ['==', ['get', 'markerShape'], 'circle'], ['!', ['has', 'markerShape']]]
+    ];
+    const NTK_UNCLUSTERED_ICON_FILTER = [
+        'all',
+        ['!', ['has', 'point_count']],
+        ['==', ['get', 'markerShape'], 'icon']
+    ];
+
+    function ntkResolveIconUrl(iconUrl) {
+        if (!iconUrl || typeof iconUrl !== 'string') return iconUrl;
+        if (iconUrl.startsWith('http://') || iconUrl.startsWith('https://') || iconUrl.startsWith('data:')) {
+            return iconUrl;
+        }
+        if (iconUrl.startsWith('packages/')) {
+            const origin = window.location.origin || '';
+            const href = window.location.href || '';
+            if (href.indexOf('/flutter_assets/') !== -1) {
+                return origin + '/assets/flutter_assets/' + iconUrl;
+            }
+            return origin + '/assets/' + iconUrl;
+        }
+        const base = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+        return base + iconUrl.replace(/^\//, '');
+    }
+
+    async function ensureIconLoaded(iconUrl) {
+        const resolvedUrl = ntkResolveIconUrl(iconUrl);
+        const iconName = getIconNameFromUrl(resolvedUrl);
+
+        if (loadedIcons.has(resolvedUrl) && map.hasImage(iconName)) {
+            return loadedIcons.get(resolvedUrl);
+        }
+
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+
+            img.onload = function () {
+                try {
+                    if (!map.hasImage(iconName)) {
+                        map.addImage(iconName, img);
+
+                        const iconData = {
+                            name: iconName,
+                            width: img.width,
+                            height: img.height
+                        };
+                        loadedIcons.set(resolvedUrl, iconData);
+                        resolve(iconData);
+                    } else {
+                        resolve(loadedIcons.get(resolvedUrl));
+                    }
+                } catch (e) {
+                    console.log("ERROR_INTERNAL " + e.toString());
+                    reject(e);
+                }
+            };
+
+            img.onerror = function (err) {
+                reject(new Error('Icon load failed'));
+            };
+
+            img.src = resolvedUrl;
+        });
+    }
+
+
+    function ntkIsRoundOrderMarker(iconUrl) {
+        if (!iconUrl) return true;
+        const normalized = String(iconUrl).toLowerCase();
+        if (normalized.indexOf('redmarker') !== -1) return false;
+        if (normalized.indexOf('yellowmarker') !== -1) return false;
+        if (normalized.indexOf('greenmarker') !== -1) return false;
+        if (normalized.indexOf('marker-pin') !== -1) return false;
+        return true;
+    }
+
+    const OPENFREE_HOST = 'https://tiles.openfreemap.org';
+
+    function ntkTileProxyBase() {
+        const fallback = 'https://app.edetgruz.com/api/map-tile-proxy.php';
         try {
-            NtkMapBridge.postMessage(JSON.stringify(payload));
-        } catch (e) {
-            console.log(JSON.stringify(payload));
+            const host = window.location.hostname || '';
+            if (host === 'app.edetgruz.com' || host.endsWith('.edetgruz.com')) {
+                return window.location.origin + '/api/map-tile-proxy.php';
+            }
+        } catch (_) {}
+        return fallback;
+    }
+
+    // #region agent log
+    function ntkDebugLog(hypothesisId, location, message, data) {
+        try {
+            const payload = {
+                sessionId: '1fca75',
+                runId: 'post-fix',
+                hypothesisId: hypothesisId,
+                location: location,
+                message: message,
+                data: data || {},
+                timestamp: Date.now()
+            };
+            console.log('NTK_DEBUG', JSON.stringify(payload));
+            fetch('http://127.0.0.1:7720/ingest/970f6308-8af1-4659-90f4-8d6295d4ae77', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'X-Debug-Session-Id': '1fca75'},
+                body: JSON.stringify(payload)
+            }).catch(function () {});
+            if (typeof window.__ntkEmit === 'function') {
+                window.__ntkEmit('DBG ' + hypothesisId + ' ' + message);
+            }
+        } catch (_) {}
+    }
+
+    function ntkProbeUrl(label, url, timeoutMs) {
+        const started = Date.now();
+        return new Promise(function (resolve) {
+            const timer = setTimeout(function () {
+                resolve({label: label, status: 'timeout', ms: Date.now() - started});
+            }, timeoutMs);
+            fetch(url, {method: 'GET', mode: 'cors', cache: 'no-store'})
+                .then(function (r) {
+                    clearTimeout(timer);
+                    resolve({label: label, status: r.status, ok: r.ok, ms: Date.now() - started});
+                })
+                .catch(function (e) {
+                    clearTimeout(timer);
+                    resolve({label: label, status: 'error', err: String(e), ms: Date.now() - started});
+                });
+        });
+    }
+    // #endregion
+
+    function ntkTransformRequest(url, resourceType) {
+        if (typeof url !== 'string' || url.indexOf(OPENFREE_HOST) !== 0) {
+            return;
+        }
+        const base = ntkTileProxyBase();
+        return { url: base + '?u=' + encodeURIComponent(url) };
+    }
+
+    const DEFAULT_STYLE_URL = 'https://tiles.openfreemap.org/styles/bright';
+    let styleUrl = DEFAULT_STYLE_URL;
+    let requestedStyleUrl = styleUrl;
+    let lastGoodStyleUrl = styleUrl;
+    let styleWatchdog = null;
+
+    // #region agent log
+    ntkDebugLog('D', 'map_mobile.html:init', 'map bootstrap', {
+        hostname: window.location.hostname || '',
+        origin: window.location.origin || '',
+        proxyBase: ntkTileProxyBase(),
+        styleUrl: styleUrl
+    });
+    const _proxyBaseMobile = ntkTileProxyBase();
+    Promise.all([
+        ntkProbeUrl('direct_style', 'https://tiles.openfreemap.org/styles/bright', 12000),
+        ntkProbeUrl('proxy_style', _proxyBaseMobile + '?u=' + encodeURIComponent('https://tiles.openfreemap.org/styles/bright'), 12000),
+        ntkProbeUrl('direct_glyph', 'https://tiles.openfreemap.org/fonts/Noto%20Sans%20Regular/0-255.pbf', 12000),
+        ntkProbeUrl('proxy_glyph', _proxyBaseMobile + '?u=' + encodeURIComponent('https://tiles.openfreemap.org/fonts/Noto Sans Regular/0-255.pbf'), 12000)
+    ]).then(function (results) {
+        ntkDebugLog('B', 'map_mobile.html:connectivity', 'endpoint probe', {results: results});
+    });
+    // #endregion
+
+    const map = new maplibregl.Map({
+        container: 'map',
+        style: styleUrl,
+        center: [30.45, 59.35],
+        pitch: 0,
+        zoom: 7.2,
+        renderWorldCopies: false,
+        transformRequest: ntkTransformRequest
+    });
+
+    let ntkSuppressUserMoveEndUntil = 0;
+
+    function ntkBeginProgrammaticMove() {
+        ntkSuppressUserMoveEndUntil = Date.now() + 2500;
+    }
+
+    function ntkNotifyUserMoveEnd() {
+        const center = map.getCenter();
+        const zoom = map.getZoom();
+        if (window.parent && typeof window.parent.onMapMoveEnd === 'function') {
+            window.parent.onMapMoveEnd(center.lat, center.lng, zoom);
+        }
+        if (typeof window.__ntkEmit === 'function') {
+            window.__ntkEmit('moveend ' + center.lat + ' ' + center.lng + ' ' + zoom);
         }
     }
 
-    function circlePolygon(lat, lon, radiusM, steps) {
-        const coords = [];
-        const earth = 6378137;
-        const latRad = lat * Math.PI / 180;
-        const count = steps || 64;
-        for (let i = 0; i <= count; i++) {
-            const angle = (i / count) * 2 * Math.PI;
-            const dx = radiusM * Math.cos(angle);
-            const dy = radiusM * Math.sin(angle);
-            const dLat = dy / earth;
-            const dLon = dx / (earth * Math.cos(latRad));
-            coords.push([
-                lon + dLon * 180 / Math.PI,
-                lat + dLat * 180 / Math.PI
-            ]);
+    function ntkHandleUserCameraIdle() {
+        if (Date.now() < ntkSuppressUserMoveEndUntil) {
+            return;
         }
-        return {type: 'Polygon', coordinates: [coords]};
+        ntkNotifyUserMoveEnd();
     }
 
-    async function _initMap(options) {
-        if (map) return;
+    map.on('moveend', ntkHandleUserCameraIdle);
+    map.on('zoomend', ntkHandleUserCameraIdle);
 
-        let style = osmStyle;
-        if (options && options.styleUrl) {
+    (function installMissingStyleImageHandler(mapInstance) {
+        const handled = new Set();
+        mapInstance.on('styleimagemissing', (e) => {
+            if (!e || !e.id) return;
+            const id = e.id;
+            if (handled.has(id) || mapInstance.hasImage(id)) return;
+            handled.add(id);
             try {
-                const response = await fetch(options.styleUrl);
-                if (response.ok) {
-                    style = await response.json();
+                const size = 8;
+                const data = new Uint8Array(size * size * 4);
+                for (let y = 0; y < size; y++) {
+                    for (let x = 0; x < size; x++) {
+                        const i = (y * size + x) * 4;
+                        const v = ((x + y) % 2) === 0 ? 210 : 230;
+                        data[i] = v;
+                        data[i + 1] = v;
+                        data[i + 2] = v;
+                        data[i + 3] = 48;
+                    }
+                }
+                mapInstance.addImage(id, {width: size, height: size, data: data});
+            } catch (_) {
+                try {
+                    mapInstance.addImage(id, {width: 1, height: 1, data: new Uint8Array(4)});
+                } catch (_) {}
+            }
+        });
+    })(map);
+
+    function clearStyleWatchdog() {
+        if (styleWatchdog) {
+            clearTimeout(styleWatchdog);
+            styleWatchdog = null;
+        }
+    }
+
+    function applyStyleSafely(nextStyleUrl, withWatchdog = true) {
+        if (!nextStyleUrl || !map) return;
+
+        requestedStyleUrl = nextStyleUrl;
+
+        try {
+            map.setStyle(nextStyleUrl);
+        } catch (e) {
+            console.log("ERROR_INTERNAL style set failed " + e.toString());
+            if (nextStyleUrl !== DEFAULT_STYLE_URL) {
+                requestedStyleUrl = DEFAULT_STYLE_URL;
+                try {
+                    map.setStyle(DEFAULT_STYLE_URL);
+                } catch (e2) {
+                    console.log("ERROR_INTERNAL fallback style set failed " + e2.toString());
+                }
+            }
+            return;
+        }
+
+        if (!withWatchdog) return;
+
+        clearStyleWatchdog();
+        styleWatchdog = setTimeout(() => {
+            // Если стиль не догрузился вовремя, откатываемся на последний успешный.
+            if (requestedStyleUrl === nextStyleUrl) {
+                if (lastGoodStyleUrl && lastGoodStyleUrl !== nextStyleUrl) {
+                    applyStyleSafely(lastGoodStyleUrl, false);
+                } else if (nextStyleUrl !== DEFAULT_STYLE_URL) {
+                    applyStyleSafely(DEFAULT_STYLE_URL, false);
+                }
+            }
+        }, 8000);
+    }
+
+    map.on('style.load', () => {
+        clearStyleWatchdog();
+        if (requestedStyleUrl) {
+            lastGoodStyleUrl = requestedStyleUrl;
+        }
+        setTimeout(ntkRestoreCustomLayersAfterStyleChange, 0);
+    });
+
+    function ntkRestoreCustomLayersAfterStyleChange() {
+        if (!map || typeof map.isStyleLoaded !== 'function' || !map.isStyleLoaded()) {
+            return;
+        }
+
+        ensureMarkerInfrastructure().then(() => {
+            try {
+                const markerSource = map.getSource('markers-source');
+                const noClusterSource = map.getSource('nocluster-markers-source');
+                if (markerSource) {
+                    markerSource.setData(markersGeoJSON);
+                }
+                if (noClusterSource) {
+                    noClusterSource.setData(noClusterMarkersGeoJSON);
                 }
             } catch (e) {
-                console.log('style fallback', e);
+                console.log('ERROR_INTERNAL restore markers: ' + e.toString());
+            }
+
+            try {
+                for (const meta of polylineById.values()) {
+                    if (meta && meta.payload && !map.getSource(meta.sourceId)) {
+                        _createPolyline(meta.payload);
+                    }
+                }
+            } catch (e) {
+                console.log('ERROR_INTERNAL restore polylines: ' + e.toString());
+            }
+        }).catch((e) => {
+            console.log('ERROR_INTERNAL restore custom layers: ' + e.toString());
+        });
+    }
+
+    map.on('error', (event) => {
+        const rawMessage = event && event.error && event.error.message
+            ? String(event.error.message).toLowerCase()
+            : '';
+        // #region agent log
+        ntkDebugLog('C', 'map_mobile.html:map.error', 'maplibre error', {
+            message: event?.error?.message || '',
+            resourceType: event?.resourceType || '',
+            sourceId: event?.sourceId || ''
+        });
+        // #endregion
+        if (!rawMessage) return;
+
+        const isStyleRelatedError =
+            rawMessage.includes('style') ||
+            rawMessage.includes('glyph') ||
+            rawMessage.includes('sprite');
+
+        if (isStyleRelatedError && requestedStyleUrl !== DEFAULT_STYLE_URL) {
+            applyStyleSafely(DEFAULT_STYLE_URL, false);
+        }
+    });
+
+
+    map.on('click', (e) => {
+        var _lat = e.lngLat.lat;
+        var _lon = e.lngLat.lng;
+
+        const features = map.queryRenderedFeatures(e.point, {
+            layers: ['clusters', 'unclustered-circle', 'unclustered-point', 'nocluster-point']
+        });
+
+        if (features.length > 0) {
+            return;
+        }
+
+        if (suppressNextClick) {
+            suppressNextClick = false;
+            return;
+        }
+
+        // Как на веб-версии: вызываем window.parent.onMapCl (в WebView внедряется из Flutter)
+        if (window.parent && typeof window.parent.onMapCl === 'function') {
+            window.parent.onMapCl(_lat, _lon);
+        } else {
+            console.log("click " + _lat + " " + _lon);
+        }
+    });
+
+    function emitLongClick(lat, lon, point) {
+        const features = map.queryRenderedFeatures(point, {
+            layers: ['clusters', 'unclustered-circle', 'unclustered-point', 'nocluster-point']
+        });
+
+        if (features.length > 0) {
+            return;
+        }
+
+        if (window.parent && typeof window.parent.onMapLongCl === 'function') {
+            window.parent.onMapLongCl(lat, lon);
+        } else {
+            console.log("longclick " + lat + " " + lon);
+        }
+    }
+
+    // Desktop/web fallback: right click/context menu.
+    map.on('contextmenu', (e) => {
+        emitLongClick(e.lngLat.lat, e.lngLat.lng, e.point);
+    });
+
+    // Android WebView: determine long tap by pointer duration/move.
+    const LONG_PRESS_MS = 550;
+    const TOUCH_MOVE_TOLERANCE_PX = 14;
+    let suppressNextClick = false;
+    let pointerStartAt = 0;
+    let pointerStartPoint = null;
+    let pointerMovedTooMuch = false;
+    let activePointerId = null;
+
+    function resetPointerGesture() {
+        pointerStartAt = 0;
+        pointerStartPoint = null;
+        pointerMovedTooMuch = false;
+        activePointerId = null;
+    }
+
+    function getLocalPointFromPointerEvent(ev) {
+        const rect = map.getCanvasContainer().getBoundingClientRect();
+        return {
+            x: ev.clientX - rect.left,
+            y: ev.clientY - rect.top
+        };
+    }
+
+    function setupPointerLongPress() {
+        const canvasContainer = map.getCanvasContainer();
+        if (!canvasContainer) return;
+
+        canvasContainer.addEventListener('pointerdown', (ev) => {
+            if (ev.pointerType !== 'touch') return;
+            activePointerId = ev.pointerId;
+            pointerStartAt = Date.now();
+            pointerMovedTooMuch = false;
+            pointerStartPoint = getLocalPointFromPointerEvent(ev);
+        }, {passive: true});
+
+        canvasContainer.addEventListener('pointermove', (ev) => {
+            if (ev.pointerType !== 'touch') return;
+            if (activePointerId !== ev.pointerId || !pointerStartPoint) return;
+            const currentPoint = getLocalPointFromPointerEvent(ev);
+            const dx = Number(currentPoint.x) - Number(pointerStartPoint.x);
+            const dy = Number(currentPoint.y) - Number(pointerStartPoint.y);
+            const dist = Math.sqrt((dx * dx) + (dy * dy));
+            if (dist > TOUCH_MOVE_TOLERANCE_PX) {
+                pointerMovedTooMuch = true;
+            }
+        }, {passive: true});
+
+        canvasContainer.addEventListener('pointerup', (ev) => {
+            if (ev.pointerType !== 'touch') return;
+            if (activePointerId !== ev.pointerId || !pointerStartPoint) {
+                resetPointerGesture();
+                return;
+            }
+
+            const duration = Date.now() - pointerStartAt;
+            if (!pointerMovedTooMuch && duration >= LONG_PRESS_MS) {
+                const point = getLocalPointFromPointerEvent(ev);
+                const lngLat = map.unproject([point.x, point.y]);
+                suppressNextClick = true;
+                emitLongClick(lngLat.lat, lngLat.lng, point);
+            }
+
+            resetPointerGesture();
+        }, {passive: true});
+
+        const cancelHandler = () => {
+            resetPointerGesture();
+        };
+        canvasContainer.addEventListener('pointercancel', cancelHandler, {passive: true});
+        canvasContainer.addEventListener('pointerleave', cancelHandler, {passive: true});
+    }
+
+    map.on('styledata', () => {
+        const style = map.getStyle();
+        if (!style.glyphs) {
+            style.glyphs = 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf';
+            map.setStyle(style);
+        }
+    });
+
+    map.on('load', () => {
+        // #region agent log
+        ntkDebugLog('E', 'map_mobile.html:map.load', 'map loaded', {
+            zoom: map.getZoom(),
+            isStyleLoaded: map.isStyleLoaded(),
+            requestedStyleUrl: requestedStyleUrl
+        });
+        // #endregion
+        setupPointerLongPress();
+        const layers = map.getStyle().layers;
+
+        let labelLayerId;
+        for (let i = 0; i < layers.length; i++) {
+            if (layers[i].type === 'symbol' && layers[i].layout['text-field']) {
+                labelLayerId = layers[i].id;
+                break;
             }
         }
 
-        map = new maplibregl.Map({
-            container: 'map',
-            style: style,
-            center: [options.lon || 30, options.lat || 55],
-            zoom: options.zoom || 4,
-            attributionControl: true
+        const expr = ['coalesce', ['get', 'name:ru'], ['get', 'name']];
+        ['label_country_1', 'label_country_2', 'label_country_3'].forEach(id => {
+            map.setLayoutProperty(id, 'text-field', expr);
         });
 
-        map.on('load', function () {
-            post({type: 'ready'});
+        map.addSource('openfreemap', {
+            url: `https://tiles.openfreemap.org/planet`,
+            type: 'vector',
         });
 
-        map.on('click', function (event) {
-            post({
-                type: 'click',
-                lat: event.lngLat.lat,
-                lon: event.lngLat.lng
-            });
+        map.addLayer(
+            {
+                'id': '3d-buildings',
+                'source': 'openfreemap',
+                'source-layer': 'building',
+                'type': 'fill-extrusion',
+                'minzoom': 15,
+                'filter': ['!=', ['get', 'hide_3d'], true],
+                'paint': {
+                    'fill-extrusion-color': [
+                        'interpolate',
+                        ['linear'],
+                        ['get', 'render_height'], 0, 'lightgray', 200, 'royalblue', 400, 'lightblue'
+                    ],
+                    'fill-extrusion-height': [
+                        'interpolate',
+                        ['linear'],
+                        ['zoom'],
+                        15,
+                        0,
+                        16,
+                        ['get', 'render_height']
+                    ],
+                    'fill-extrusion-base': ['case',
+                        ['>=', ['get', 'zoom'], 16],
+                        ['get', 'render_min_height'], 0
+                    ]
+                }
+            },
+            labelLayerId
+        );
+
+        map.addSource('markers-source', {
+            type: 'geojson',
+            data: markersGeoJSON,
+            cluster: true,
+            clusterMaxZoom: 16,
+            clusterRadius: 50
         });
-    }
 
-    function _addMarker(marker) {
-        if (!map) return;
+        map.addSource('nocluster-markers-source', {
+            type: 'geojson',
+            data: noClusterMarkersGeoJSON
+        });
 
-        const el = document.createElement('div');
-        el.className = 'azs-marker';
+        const img = new Image(35, 35);
+        img.crossOrigin = 'anonymous';
 
-        if (marker.title) {
-            const title = document.createElement('div');
-            title.className = 'azs-marker-title';
-            title.textContent = marker.title;
-            el.appendChild(title);
+        function addDefaultMarkerAndClusterLayers(markerImage) {
+            ensureClusterMarkerLayers(markerImage);
         }
 
-        const img = document.createElement('img');
-        img.width = marker.width || 30;
-        img.height = marker.height || 40;
-        img.alt = marker.title || '';
-        if (marker.iconUrl) {
-            img.src = marker.iconUrl;
-            img.onerror = function () {
-                img.style.display = 'none';
-            };
-        }
-        el.appendChild(img);
-
-        el.addEventListener('click', function (event) {
-            event.stopPropagation();
-            post({
-                type: 'point',
-                id: marker.id,
-                lat: marker.lat,
-                lon: marker.lon
-            });
-        });
-
-        const mapMarker = new maplibregl.Marker({element: el, anchor: 'bottom'})
-            .setLngLat([marker.lon, marker.lat])
-            .addTo(map);
-        markers.push(mapMarker);
-    }
-
-    function _clearAllMarkers() {
-        markers.forEach(function (item) {
-            item.remove();
-        });
-        markers = [];
-    }
-
-    function _goToBounds(points) {
-        if (!map || !points || !points.length) return;
-        const bounds = new maplibregl.LngLatBounds();
-        points.forEach(function (point) {
-            bounds.extend([point[1], point[0]]);
-        });
-        map.fitBounds(bounds, {padding: 48, maxZoom: 15, duration: 800});
-    }
-
-    function _goToPointThenZoom(lat, lon, zoom) {
-        if (!map) return;
-        map.flyTo({center: [lon, lat], zoom: zoom, duration: 1000});
-    }
-
-    function _updateCurrentPosition(lat, lon, accuracyKm) {
-        if (!map) return;
-
-        const radiusM = Math.max(Number(accuracyKm) * 1000, 12);
-        const data = {
-            type: 'Feature',
-            geometry: circlePolygon(lat, lon, radiusM),
-            properties: {}
+        img.onload = function () {
+            addDefaultMarkerAndClusterLayers(img);
+            if (window.parent && typeof window.parent.onCreatedEnd === 'function') {
+                try {
+                    window.parent.onCreatedEnd();
+                } catch (e) {
+                    console.error('onCreatedEnd error:', e);
+                }
+            }
         };
 
-        if (map.getSource('current-pos')) {
-            map.getSource('current-pos').setData(data);
-        } else if (map.isStyleLoaded()) {
-            map.addSource('current-pos', {type: 'geojson', data: data});
+        img.onerror = function () {
+            const size = 35;
+            const c = document.createElement('canvas');
+            c.width = size;
+            c.height = size;
+            const ctx = c.getContext('2d');
+            if (ctx) {
+                ctx.fillStyle = '#602FC8';
+                ctx.beginPath();
+                ctx.arc(size / 2, size / 2, size / 2 - 1, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            addDefaultMarkerAndClusterLayers(c);
+            if (window.parent && typeof window.parent.onCreatedEnd === 'function') {
+                try {
+                    window.parent.onCreatedEnd();
+                } catch (e) {
+                    console.error('onCreatedEnd error:', e);
+                }
+            }
+        };
+
+        img.src = ntkResolveIconUrl(NTK_DEFAULT_MARKER_URL);
+    });
+
+    function handleMarkerClick(e) {
+        const coordinates = e.features[0].geometry.coordinates.slice();
+        const props = e.features[0].properties;
+        const lon = coordinates[0], lat = coordinates[1];
+        if (typeof printCoordinat === 'function') printCoordinat(lat, lon);
+
+        if (props.popupData) {
+            try {
+                const popupData = JSON.parse(props.popupData);
+
+                const {html, imageId} = buildPopupHtml(
+                    popupData.title,
+                    popupData.buttons,
+                    popupData.images,
+                    popupData.contents,
+                    popupData.fontName
+                );
+
+                const popup = new maplibregl.Popup({maxWidth: '420px'})
+                    .setLngLat(coordinates)
+                    .setHTML(html)
+                    .addTo(map);
+
+                attachPopupButtonHandlers(popup);
+
+                if (imageId && popupData.images && popupData.images.length > 1) {
+                    setTimeout(() => {
+                        const imageEl = document.getElementById(imageId);
+
+                        if (imageEl && !imageEl.dataset.listenerAttached) {
+                            imageEl.dataset.listenerAttached = 'true';
+                            imageEl.style.cursor = 'pointer';
+
+                            imageEl.addEventListener('click', function (evt) {
+                                evt.stopPropagation();
+
+                                try {
+                                    const images = JSON.parse(imageEl.dataset.images || '[]');
+                                    let current = Number(imageEl.dataset.current) || 0;
+                                    current = (current + 1) % images.length;
+                                    imageEl.dataset.current = String(current);
+                                    imageEl.src = images[current];
+                                } catch (e) {
+                                    console.error('Error switching image:', e);
+                                }
+                            });
+                        }
+                    }, 100);
+                }
+            } catch (e) {
+                console.error('❌ Error:', e);
+                console.error('Stack:', e.stack);
+            }
+        }
+    }
+
+    function emitCustomMarkerAction(actionId) {
+        if (!actionId) return;
+
+        if (window.parent && typeof window.parent.customCl === 'function') {
+            window.parent.customCl(actionId);
+            return;
+        }
+
+        if (typeof window.customCl === 'function') {
+            window.customCl(actionId);
+            return;
+        }
+
+        if (typeof printCustomMarker === 'function') {
+            printCustomMarker(actionId);
+            return;
+        }
+
+        console.log("custommarker " + actionId);
+    }
+
+    function attachPopupButtonHandlers(popup) {
+        if (!popup || typeof popup.getElement !== 'function') return;
+        const popupElement = popup.getElement();
+        if (!popupElement) return;
+
+        const buttons = popupElement.querySelectorAll('button[data-action-id]');
+        buttons.forEach((buttonEl) => {
+            if (buttonEl.dataset.listenerAttached === 'true') return;
+            buttonEl.dataset.listenerAttached = 'true';
+
+            const handler = (event) => {
+                if (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+
+                const now = Date.now();
+                const lastTap = Number(buttonEl.dataset.lastTapTs || '0');
+                const isDuplicate = now - lastTap < 250;
+                // Обновляем timestamp всегда, чтобы "окно" анти-дребезга
+                // не тянулось между разными нажатиями пользователя.
+                buttonEl.dataset.lastTapTs = String(now);
+
+                if (popup && typeof popup.remove === 'function') {
+                    popup.remove();
+                }
+                if (isDuplicate) return;
+                emitCustomMarkerAction(buttonEl.dataset.actionId);
+            };
+
+            buttonEl.addEventListener('click', handler, {passive: false});
+            buttonEl.addEventListener('touchend', handler, {passive: false});
+        });
+    }
+
+    function composeCssFilter(arr) {
+        const [blur, invert, gray, bright, contrast, hue, opacity, saturate, sepia] = arr;
+        return [
+            `blur(${blur})`,
+            `invert(${invert})`,
+            `grayscale(${gray})`,
+            `brightness(${bright})`,
+            `contrast(${contrast})`,
+            `hue-rotate(${hue})`,
+            `opacity(${opacity})`,
+            `saturate(${saturate})`,
+            `sepia(${sepia})`
+        ].join(' ');
+    }
+
+    function applyCanvasFilter(cssFilter) {
+        const canvas = map.getCanvas();
+        if (canvas) {
+            canvas.style.filter = cssFilter;
+        }
+    }
+
+    _updateMapStyle = function (styleUrl) {
+        if (map && styleUrl) {
+            applyStyleSafely(styleUrl, true);
+            console.log('Map style updated to:', styleUrl);
+        }
+    };
+
+    _createPolyline = function (polylineString) {
+        let dto = PolylineDto.fromJson(polylineString);
+
+        const sourceId = `polyline-source-${dto.id}`;
+        const layerId = `polyline-layer-${dto.id}`;
+
+        if (map.getLayer(layerId)) {
+            map.removeLayer(layerId);
+        }
+        if (map.getSource(sourceId)) {
+            map.removeSource(sourceId);
+        }
+
+        const coords = dto.points;
+        const data = {
+            type: 'Feature',
+            geometry: {type: 'LineString', coordinates: coords},
+            properties: {id: dto.id}
+        };
+
+        map.addSource(sourceId, {type: 'geojson', data});
+        const lineLayer = {
+            id: layerId,
+            type: 'line',
+            source: sourceId,
+            paint: {
+                'line-color': dto.color || '#3388ff',
+                'line-opacity': dto.opacity ?? 1.0,
+                'line-width': dto.width ?? 5
+            }
+        };
+        try {
+            if (map.getLayer('clusters')) {
+                map.addLayer(lineLayer, 'clusters');
+            } else {
+                map.addLayer(lineLayer);
+            }
+        } catch (e) {
+            console.error('add polyline layer:', e);
+            try {
+                map.addLayer(lineLayer);
+            } catch (e2) {
+                console.error('add polyline layer (fallback):', e2);
+            }
+        }
+
+        if (map.triggerRepaint) map.triggerRepaint();
+        polylines.push({id: dto.id, sourceId, layerId});
+        polylineById.set(dto.id, {sourceId, layerId, payload: polylineString});
+    };
+
+    printCoordinat = function (lat, lon) {
+        // Android WebView передаёт только первый аргумент - объединяем в одну строку
+        console.log("point " + lat + " " + lon)
+    }
+
+    printCustomMarker = function (actionId) {
+        console.log("custommarker " + actionId)
+    }
+
+    function makeid(length) {
+        let result = '';
+        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+        const charactersLength = characters.length;
+        let counter = 0;
+        while (counter < length) {
+            result += characters.charAt(Math.floor(Math.random() * charactersLength));
+            counter += 1;
+        }
+        return result;
+    }
+
+    function buildPopupHtml(title, buttons, images, contents, fontName) {
+        let html = `<div class="ntk-popup">`;
+        let imageId = null;
+
+        if (images && images.length) {
+            imageId = 'img-' + Math.random().toString(36).slice(2, 9);
+
+            const imagesJson = JSON.stringify(images).replace(/"/g, '&quot;');
+
+            html += `<div style="text-align:center">
+            <img class="ntk-marker-img" src="${images[0]}"
+                 id="${imageId}"
+                 data-current="0"
+                 data-images="${imagesJson}" />
+            </div>`;
+        }
+
+        html += `<div style="font-family: '${fontName}'; font-weight: normal; font-size: 16px">${title}</div>`;
+
+        if (contents && contents.length) {
+            for (let i = 0; i < contents.length; i++) {
+                try {
+                    const raw = contents[i];
+                    const tempObject = (typeof raw === 'string') ? JSON.parse(raw) : raw;
+
+                    html += `<h3 style="font-size: 14px; font-family: '${tempObject['fontName'] || ''}'">${tempObject['title'] || ''}`;
+                    if (tempObject['description'] && tempObject['description'] !== 'null') {
+                        html += `<span style="font-size: 14px; font-weight: normal; font-family: '${tempObject['fontNameDescription'] || ''}"> ${tempObject['description']} </span>`;
+                    }
+                    html += `</h3>`;
+                } catch (ex) {
+                    console.log(ex.toString());
+                }
+            }
+        }
+
+        html += `<table><tr>`;
+        if (buttons && buttons.length) {
+            for (let i = 0; i < buttons.length; i++) {
+                try {
+                    const raw = buttons[i];
+                    const mapObject = (typeof raw === 'string') ? JSON.parse(raw) : raw;
+
+                    let styleText = 'border:none;';
+                    if (mapObject['colorHex'] && mapObject['colorHex'] !== 'null') styleText += `background:${mapObject['colorHex']};`;
+                    if (mapObject['textColorHex'] && mapObject['textColorHex'] !== 'null') styleText += `color:${mapObject['textColorHex']};`;
+                    if (mapObject['borderRadius'] && mapObject['borderRadius'] !== 'null') styleText += `border-radius:${Number(mapObject['borderRadius'])}px;`;
+                    if (mapObject['height'] && mapObject['height'] !== 'null') styleText += `height:${Number(mapObject['height'])}px;`;
+                    if (mapObject['width'] && mapObject['width'] !== 'null') styleText += `width:${Number(mapObject['width'])}px;`;
+                    html += `<td><button type="button" id="${mapObject['id']}" data-action-id="${mapObject['id']}" style="${styleText}">${mapObject['name'] || ''}</button></td>`;
+                } catch (ex) {
+                    console.log(ex.toString());
+                }
+            }
+        }
+        html += `</tr></table></div>`;
+
+        return {html, imageId};
+    }
+
+    async function ensureDefaultMarkerImageReady() {
+        if (map.hasImage('default-marker')) return;
+
+        await new Promise((resolve) => {
+            const img = new Image(35, 35);
+            img.crossOrigin = 'anonymous';
+            img.onload = function () {
+                try {
+                    if (!map.hasImage('default-marker')) {
+                        map.addImage('default-marker', img);
+                    }
+                } catch (_) {
+                    // ignore
+                }
+                resolve();
+            };
+            img.onerror = function () {
+                try {
+                    const size = 35;
+                    const c = document.createElement('canvas');
+                    c.width = size;
+                    c.height = size;
+                    const ctx = c.getContext('2d');
+                    if (ctx) {
+                        ctx.fillStyle = '#602FC8';
+                        ctx.beginPath();
+                        ctx.arc(size / 2, size / 2, size / 2 - 1, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    if (!map.hasImage('default-marker')) {
+                        map.addImage('default-marker', c);
+                    }
+                } catch (_) {
+                    // ignore
+                }
+                resolve();
+            };
+            img.src = ntkResolveIconUrl(NTK_DEFAULT_MARKER_URL);
+        });
+    }
+
+    let ntkMarkerHandlersAttached = false;
+
+    function attachMarkerInteractionHandlers() {
+        if (ntkMarkerHandlersAttached) return;
+        ntkMarkerHandlersAttached = true;
+
+        map.on('click', 'clusters', async (e) => {
+            const features = map.queryRenderedFeatures(e.point, {
+                layers: ['clusters']
+            });
+            const clusterId = features[0].properties.cluster_id;
+            const zoom = await map.getSource('markers-source').getClusterExpansionZoom(clusterId);
+            map.easeTo({
+                center: features[0].geometry.coordinates,
+                zoom: zoom
+            });
+        });
+
+        map.on('click', 'unclustered-circle', handleMarkerClick);
+        map.on('click', 'unclustered-point', handleMarkerClick);
+        map.on('click', 'nocluster-point', handleMarkerClick);
+
+        map.on('mouseenter', 'clusters', () => {
+            map.getCanvas().style.cursor = 'pointer';
+        });
+        map.on('mouseleave', 'clusters', () => {
+            map.getCanvas().style.cursor = '';
+        });
+        map.on('mouseenter', 'unclustered-circle', () => {
+            map.getCanvas().style.cursor = 'pointer';
+        });
+        map.on('mouseleave', 'unclustered-circle', () => {
+            map.getCanvas().style.cursor = '';
+        });
+        map.on('mouseenter', 'unclustered-point', () => {
+            map.getCanvas().style.cursor = 'pointer';
+        });
+        map.on('mouseleave', 'unclustered-point', () => {
+            map.getCanvas().style.cursor = '';
+        });
+        map.on('mouseenter', 'nocluster-point', () => {
+            map.getCanvas().style.cursor = 'pointer';
+        });
+        map.on('mouseleave', 'nocluster-point', () => {
+            map.getCanvas().style.cursor = '';
+        });
+    }
+
+    function ensureClusterMarkerLayers(markerImage) {
+        if (markerImage && !map.hasImage('default-marker')) {
+            try {
+                map.addImage('default-marker', markerImage);
+            } catch (e) {
+                console.error('addImage error:', e);
+            }
+        }
+
+        if (!map.getLayer('clusters')) {
             map.addLayer({
-                id: 'current-pos-fill',
-                type: 'fill',
-                source: 'current-pos',
+                id: 'clusters',
+                type: 'circle',
+                source: 'markers-source',
+                filter: ['has', 'point_count'],
                 paint: {
-                    'fill-color': '#4da3ff',
-                    'fill-opacity': 0.15
+                    'circle-color': [
+                        'step',
+                        ['get', 'point_count'],
+                        '#602FC8', 10, '#7D2378', 30, '#F05050'
+                    ],
+                    'circle-radius': [
+                        'step',
+                        ['get', 'point_count'], 15, 10, 20, 30, 25
+                    ]
+                },
+                layout: {
+                    'circle-sort-key': ['get', 'point_count']
                 }
             });
+
+            map.setPaintProperty('clusters', 'circle-radius-transition', {
+                duration: 300,
+                delay: 0
+            });
+
+            map.setPaintProperty('clusters', 'circle-color-transition', {
+                duration: 300,
+                delay: 0
+            });
+        }
+
+        if (!map.getLayer('cluster-count')) {
             map.addLayer({
-                id: 'current-pos-line',
-                type: 'line',
-                source: 'current-pos',
+                id: 'cluster-count',
+                type: 'symbol',
+                source: 'markers-source',
+                filter: ['has', 'point_count'],
+                layout: {
+                    'text-field': '{point_count_abbreviated}',
+                    'text-font': ['Noto Sans Regular'],
+                    'text-size': 12
+                },
                 paint: {
-                    'line-color': '#4da3ff',
-                    'line-width': 1.5
+                    'text-color': '#ffffff'
                 }
             });
         }
 
-        if (userMarker) {
-            userMarker.setLngLat([lon, lat]);
+        if (!map.getLayer('unclustered-circle')) {
+            map.addLayer({
+                id: 'unclustered-circle',
+                type: 'circle',
+                source: 'markers-source',
+                filter: NTK_UNCLUSTERED_CIRCLE_FILTER,
+                paint: {
+                    'circle-color': NTK_ORDER_CIRCLE_COLOR,
+                    'circle-radius': NTK_ORDER_CIRCLE_RADIUS
+                }
+            });
+        }
+
+        if (!map.getLayer('unclustered-point')) {
+            map.addLayer({
+                id: 'unclustered-point',
+                type: 'symbol',
+                source: 'markers-source',
+                filter: NTK_UNCLUSTERED_ICON_FILTER,
+                layout: {
+                    'icon-image': ['coalesce', ['get', 'iconName'], 'default-marker'],
+                    'icon-size': ['coalesce', ['get', 'iconScale'], 1],
+                    'icon-allow-overlap': true,
+                    'icon-anchor': ['coalesce', ['get', 'iconAnchor'], 'bottom']
+                }
+            });
+        }
+
+        if (!map.getLayer('nocluster-point')) {
+            map.addLayer({
+                id: 'nocluster-point',
+                type: 'symbol',
+                source: 'nocluster-markers-source',
+                layout: {
+                    'icon-image': ['coalesce', ['get', 'iconName'], 'default-marker'],
+                    'icon-size': ['coalesce', ['get', 'iconScale'], 1],
+                    'icon-allow-overlap': true,
+                    'icon-anchor': ['coalesce', ['get', 'iconAnchor'], 'bottom']
+                }
+            });
+        }
+
+        attachMarkerInteractionHandlers();
+    }
+
+    async function ensureMarkerInfrastructure() {
+        if (!map.getSource('markers-source')) {
+            map.addSource('markers-source', {
+                type: 'geojson',
+                data: markersGeoJSON,
+                cluster: true,
+                clusterMaxZoom: 16,
+                clusterRadius: 50
+            });
+        }
+
+        if (!map.getSource('nocluster-markers-source')) {
+            map.addSource('nocluster-markers-source', {
+                type: 'geojson',
+                data: noClusterMarkersGeoJSON
+            });
+        }
+
+        await ensureDefaultMarkerImageReady();
+        ensureClusterMarkerLayers(null);
+    }
+
+    _addMarker = async function (markerString, noCluster = false) {
+        await ensureMarkerInfrastructure();
+        let dto = MapMarkerDto.fromJson(markerString);
+
+        let iconName = 'default-marker';
+        let iconScale = 1;
+        let iconUrl = dto.icon && dto.icon.iconPath ? dto.icon.iconPath : '';
+        let markerShape = ntkIsRoundOrderMarker(iconUrl) ? 'circle' : 'icon';
+        if (noCluster) markerShape = 'icon';
+
+        if (markerShape === 'icon' && iconUrl) {
+            try {
+                const iconData = await ensureIconLoaded(iconUrl);
+                iconName = iconData.name;
+
+                const targetWidth = dto.icon.width;
+                const actualWidth = iconData.width;
+                iconScale = targetWidth / actualWidth;
+            } catch (e) {
+                iconName = 'default-marker';
+                iconScale = 1;
+            }
+        }
+
+        const iconAnchor = markerShape === 'circle' ? 'center' : 'bottom';
+
+        const feature = {
+            type: 'Feature',
+            geometry: {
+                type: 'Point',
+                coordinates: [dto.lng, dto.lat]
+            },
+            properties: {
+                id: dto.id,
+                popupData: dto.isHavePopup ? JSON.stringify({
+                    title: dto.title,
+                    fontName: dto.fontName,
+                    buttons: dto.buttons,
+                    images: dto.images,
+                    contents: dto.contents
+                }) : null,
+                markerShape: markerShape,
+                iconName: iconName,
+                iconScale: iconScale,
+                iconAnchor: iconAnchor
+            }
+        };
+
+        if (noCluster) {
+            noClusterMarkersGeoJSON.features.push(feature);
+            function trySetNoclusterData(retries) {
+                retries = retries || 0;
+                const source = map.getSource('nocluster-markers-source');
+                if (source) {
+                    try {
+                        source.setData(noClusterMarkersGeoJSON);
+                        map.triggerRepaint();
+                    } catch (e) {
+                        console.log('ERROR_INTERNAL setData nocluster: ' + e.toString());
+                    }
+                    return;
+                }
+                if (retries < 50) setTimeout(() => trySetNoclusterData(retries + 1), 100);
+            }
+            trySetNoclusterData();
         } else {
-            const el = document.createElement('div');
-            el.className = 'azs-user-dot';
-            userMarker = new maplibregl.Marker({element: el})
-                .setLngLat([lon, lat])
-                .addTo(map);
+            markersGeoJSON.features.push(feature);
+            function trySetMarkersData(retries) {
+                retries = retries || 0;
+                const source = map.getSource('markers-source');
+                if (source) {
+                    try {
+                        source.setData(markersGeoJSON);
+                        map.triggerRepaint();
+                    } catch (e) {
+                        console.log('ERROR_INTERNAL setData markers: ' + e.toString());
+                    }
+                    return;
+                }
+                if (retries < 50) setTimeout(() => trySetMarkersData(retries + 1), 100);
+            }
+            trySetMarkersData();
+        }
+
+        markerById.set(dto.id, {...feature, noCluster});
+    };
+
+    _updateFilter = function (newFilter) {
+        const css = composeCssFilter(newFilter);
+        applyCanvasFilter(css);
+
+        console.log('APPLYING NEW FILTER');
+    };
+
+    _updateCurrentPosition = function (lat, lon, accuracy) {
+        if (currentPosMarker) currentPosMarker.remove();
+        currentPosMarker = new maplibregl.Marker({opacity: 0.5}).setLngLat([lon, lat]).addTo(map);
+        const pxRadius = metersToPixelsAtLat(accuracy, lat, map.getZoom());
+
+        const feature = {type: 'Feature', geometry: {type: 'Point', coordinates: [lon, lat]}, properties: {}};
+        if (!map.getSource(currentPosSrcId)) {
+            map.addSource(currentPosSrcId, {type: 'geojson', data: feature});
+            map.addLayer({
+                id: currentPosLayerId,
+                type: 'circle',
+                source: currentPosSrcId,
+                paint: {
+                    'circle-color': '#3388ff',
+                    'circle-opacity': 0.2,
+                    'circle-stroke-color': '#3388ff',
+                    'circle-stroke-width': 1,
+                    'circle-radius': pxRadius
+                }
+            });
+        } else {
+            map.getSource(currentPosSrcId).setData(feature);
+            map.setPaintProperty(currentPosLayerId, 'circle-radius', pxRadius);
+        }
+    };
+
+    _clearAllMarkers = function () {
+        markersGeoJSON.features = [];
+        noClusterMarkersGeoJSON.features = [];
+
+        const markerSource = map.getSource('markers-source');
+        const noClusterSource = map.getSource('nocluster-markers-source');
+        if (markerSource) markerSource.setData(markersGeoJSON);
+        if (noClusterSource) noClusterSource.setData(noClusterMarkersGeoJSON);
+        map.triggerRepaint();
+
+        markers = [];
+        markerById.clear();
+    };
+
+    _clearAllPolyline = function () {
+        for (const {sourceId, layerId} of polylines) {
+            try {
+                if (map.getLayer(layerId)) {
+                    map.removeLayer(layerId);
+                }
+                if (map.getSource(sourceId)) {
+                    map.removeSource(sourceId);
+                }
+            } catch (e) {
+                console.error('Failed to remove polyline:', e);
+            }
+        }
+        polylines = [];
+        polylineById.clear();
+    };
+
+    _removePolyline = function (polylineId) {
+        const polyline = polylineById.get(polylineId);
+        if (!polyline) return;
+
+        if (map.getLayer(polyline.layerId)) {
+            map.removeLayer(polyline.layerId);
+        }
+        if (map.getSource(polyline.sourceId)) {
+            map.removeSource(polyline.sourceId);
+        }
+
+        polylineById.delete(polylineId);
+        const idx = polylines.findIndex(p => p.id === polylineId);
+        if (idx !== -1) polylines.splice(idx, 1);
+    };
+
+    _removeMarker = function (markerId) {
+        const markerData = markerById.get(markerId);
+        if (!markerData) return;
+
+        const isNoCluster = !!markerData.noCluster;
+        const targetGeoJSON = isNoCluster ? noClusterMarkersGeoJSON : markersGeoJSON;
+        const targetSourceId = isNoCluster ? 'nocluster-markers-source' : 'markers-source';
+
+        targetGeoJSON.features = targetGeoJSON.features.filter(
+            f => f.properties && f.properties.id !== markerId
+        );
+
+        const src = map.getSource(targetSourceId);
+        if (src) {
+            try {
+                src.setData(targetGeoJSON);
+                map.triggerRepaint();
+            } catch (e) {
+                console.error('setData error while removing marker:', e);
+            }
+        }
+
+        markerById.delete(markerId);
+
+        const idx = markers.findIndex(m => m && m.id === markerId);
+        if (idx !== -1) {
+            markers.splice(idx, 1);
+        }
+    };
+
+    _goToPoint = function (lat, lon) {
+        ntkBeginProgrammaticMove();
+        map.easeTo({center: [lon, lat]});
+    };
+
+    _goToPointThenZoom = function (lat, lon, zoom) {
+        ntkBeginProgrammaticMove();
+        const safeZoom = Math.min(Number(zoom) || 15, 16);
+        map.flyTo({center: [lon, lat], zoom: safeZoom, speed: 1.2, curve: 1.42});
+    };
+
+    _goToBounds = function (boundsString) {
+        let dto = BoundsDto.fromJson(boundsString);
+
+        if (!dto.points || dto.points.length === 0) return;
+
+        ntkBeginProgrammaticMove();
+        map.fitBounds(dto.points, {
+            padding: {top: 100, bottom: 100, left: 72, right: 72},
+            maxZoom: 18,
+            duration: 800,
+        });
+    };
+
+    _getCameraStateJson = function () {
+        const center = map.getCenter();
+        return JSON.stringify({
+            lat: center.lat,
+            lon: center.lng,
+            zoom: map.getZoom()
+        });
+    };
+
+    window.parent._setNewFont = function (fontName, font) {
+        const style = document.createElement('style');
+        style.textContent = `
+            @font-face {
+              font-family: '${fontName}';
+              src: url(data:font/truetype;charset=utf-8;base64,${font}) format('truetype');
+            }
+        `;
+        document.head.appendChild(style);
+    };
+
+    class PolylineDto {
+        constructor(obj) {
+            this.raw = obj || {};
+            this.id = this.raw.id ?? null;
+            const rawPoints = this.raw.points ?? null;
+
+            this.points = Array.isArray(rawPoints)
+                ? rawPoints.map(c => ([c[0], c[1]]))
+                : [];
+        }
+
+        static fromJson(jsonStr) {
+            const obj = JSON.parse(jsonStr);
+            return new PolylineDto(obj);
         }
     }
+
+    class BoundsDto {
+        constructor(obj) {
+            this.raw = obj || {};
+            const rawPoints = this.raw.points ?? null;
+
+            this.points = Array.isArray(rawPoints)
+                ? rawPoints.map(c => ([c[0], c[1]]))
+                : [];
+        }
+
+        static fromJson(jsonStr) {
+            const obj = JSON.parse(jsonStr);
+            return new BoundsDto(obj);
+        }
+    }
+
+    class MapMarkerDto {
+        constructor(obj) {
+            this.raw = obj || {};
+            this.id = this.raw.id ?? null;
+
+            const coords = this.raw.point?.coordinates;
+            this.lat = Array.isArray(coords) ? coords[1] : null;
+            this.lng = Array.isArray(coords) ? coords[0] : null;
+
+            const popup = this.raw.popup || null;
+            this.isHavePopup = popup != null;
+            this.title = popup?.title ?? '';
+            this.fontName = popup?.fontName ?? '';
+            this.description = popup?.description ?? null;
+
+            const images = popup?.images ?? [];
+            this.images = Array.isArray(images) ? images : [];
+
+            const rawButtons = popup?.buttons ?? [];
+            this.buttons = popup?.buttons != null ? normalizeButtons(rawButtons) : null;
+
+            const rawContents = popup?.content ?? [];
+            this.contents = Array.isArray(rawContents)
+                ? rawContents.map(c => ({
+                    title: c.title ?? '',
+                    description: c.description ?? null,
+                    hexColor: c.hexColor ?? '#000000',
+                    fontName: c.fontName ?? '',
+                    fontNameDescription: c.fontNameDescription ?? ''
+                }))
+                : [];
+
+            const icon = this.raw.icon || null;
+            this.icon = icon
+                ? {
+                    iconPath: icon.iconUrl ?? '',
+                    width: Number(icon.width ?? 32),
+                    height: Number(icon.height ?? 32)
+                }
+                : null;
+
+        }
+
+        static fromJson(jsonStr) {
+            const obj = JSON.parse(jsonStr);
+            return new MapMarkerDto(obj);
+        }
+    }
+
+    function normalizeButtons(rawButtons) {
+        if (!Array.isArray(rawButtons)) return [];
+        return rawButtons.map((b) => {
+            let obj = b;
+
+            if (typeof obj === 'string') {
+                try {
+                    obj = JSON.parse(obj);
+                } catch (_) {
+                    obj = {};
+                }
+            }
+
+            if (obj === null || typeof obj !== 'object') obj = {};
+
+            const id = obj.id ?? null;
+            const name = obj.name ?? obj.title ?? '';
+            const height = obj.height != null ? Number(obj.height) : null;
+            const width = obj.width != null ? Number(obj.width) : null;
+            const borderRadius = obj.borderRadius != null ? Number(obj.borderRadius) : null;
+            const colorHex = obj.colorHex ?? null;
+            const textColorHex = obj.textColorHex ?? null;
+
+            return {id, name, height, width, borderRadius, colorHex, textColorHex};
+        });
+    }
+
+
 </script>
 </body>
 </html>

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -5,6 +6,8 @@ import 'core/providers/app_providers.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/login_page.dart';
+import 'features/auth/pending_approval_page.dart';
+import 'features/manager/manager_web_shell.dart';
 import 'features/shell/main_shell.dart';
 import 'shared/widgets/app_background.dart';
 
@@ -37,11 +40,33 @@ class _AuthenticatedHome extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final init = ref.watch(appInitProvider);
-    return init.when(
-      data: (_) => const MainShell(),
-      loading: () => const _LoadingScreen(message: 'Загрузка…'),
-      error: (error, _) => _ErrorScreen(message: 'Ошибка запуска: $error'),
+    final profileAsync = ref.watch(currentUserProfileProvider);
+
+    return profileAsync.when(
+      loading: () => const _LoadingScreen(message: 'Загрузка профиля…'),
+      error: (error, _) => _ErrorScreen(message: 'Ошибка профиля: $error'),
+      data: (profile) {
+        if (profile == null) {
+          return const _LoadingScreen(message: 'Подготовка профиля…');
+        }
+        if (!profile.canAccessApp) {
+          return PendingApprovalPage(profile: profile);
+        }
+
+        final init = ref.watch(appInitProvider);
+        return init.when(
+          data: (_) {
+            // Web + руководитель/админ → панель из концепта КП.
+            if (kIsWeb && profile.canManageUsers) {
+              return const ManagerWebShell();
+            }
+            return const MainShell();
+          },
+          loading: () => const _LoadingScreen(message: 'Загрузка…'),
+          error: (error, _) =>
+              _ErrorScreen(message: 'Ошибка запуска: $error'),
+        );
+      },
     );
   }
 }

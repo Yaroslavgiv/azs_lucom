@@ -136,9 +136,16 @@ class SyncService implements SyncChangePublisher {
     if (!await isOnline()) return SyncStatus.offline;
     _pulling = true;
     try {
-      await flushQueue();
-      await _pullService.pullAll();
+      await flushQueue().timeout(const Duration(seconds: 8));
+      await _pullService.pullAll().timeout(const Duration(seconds: 12));
       return SyncStatus.synced;
+    } on TimeoutException catch (error, stackTrace) {
+      _logger.error(
+        'Firestore pull timed out; continuing offline',
+        error,
+        stackTrace,
+      );
+      return SyncStatus.offline;
     } catch (error, stackTrace) {
       _logger.error('Failed to pull Firestore data', error, stackTrace);
       return SyncStatus.error;
@@ -150,6 +157,12 @@ class SyncService implements SyncChangePublisher {
   /// Upload local cache into any Firestore collections that are still empty.
   Future<bool> seedCloudIfEmpty() async {
     if (!await isOnline()) return false;
-    return _cloudSeeder.seedEmptyCollections();
+    try {
+      return await _cloudSeeder
+          .seedEmptyCollections()
+          .timeout(const Duration(seconds: 8), onTimeout: () => false);
+    } catch (_) {
+      return false;
+    }
   }
 }

@@ -1,0 +1,37 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node 'c:\\Users\\User\\azs_lucom\\.codex\\hooks\\session-start.js'",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node 'c:\\Users\\User\\azs_lucom\\.codex\\hooks\\before-submit-prompt.js'",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node 'c:\\Users\\User\\azs_lucom\\.codex\\hooks\\subagent-start.js'",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

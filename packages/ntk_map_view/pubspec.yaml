@@ -1,21 +1,31 @@
 name: ntk_map_view
-description: Vendored MapLibre map widget for azs_app (WebView + MapLibre GL JS).
-publish_to: "none"
-version: 1.0.0
+description: "A crossplatform map view for flutter based on leaflet, that provide to create polyline, marker, have many of callbacks to work with map, very high perfomance"
+version: 0.2.1
+repository: https://github.com/NOTKATEAMmainAndroidDeveloper/NtkMapView
 
 environment:
-  sdk: ^3.11.1
-  flutter: ">=3.24.0"
+  sdk: '>=3.3.0 <4.0.0'
+  flutter: ">=1.17.0"
 
 dependencies:
   flutter:
     sdk: flutter
+  js: ^0.7.2
   latlong2: ^0.9.1
-  webview_flutter: ^4.10.0
+  webview_flutter: ^4.13.1
+  web: ^1.1.1
+  pointer_interceptor: 0.10.1+2
 
 dev_dependencies:
-  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
 
 flutter:
   assets:
+    - lib/assets/map.html
     - lib/assets/map_mobile.html
+    - lib/assets/maplibre-gl.js
+    - lib/assets/maplibre-gl.css
+    - lib/assets/markers/

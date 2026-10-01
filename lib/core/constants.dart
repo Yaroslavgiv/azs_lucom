@@ -18,6 +18,7 @@ const String regionSpb = 'spb';
 const String regionLabelNovgorod = 'Новгород';
 const String regionLabelSpb = 'Санкт-Петербург';
 
+/// Схематичный светлый стиль MapLibre (Yandex Object Storage) для ntk_map_view.
 const String mapStyleLight =
     'https://storage.yandexcloud.net/eg-small-backet/map/lightmap.json';
 
@@ -48,3 +49,10 @@ const double brigadeMapDefaultZoom = 7.2;
 
 String cityForRegion(String region) =>
     region == regionNovgorod ? 'Великий Новгород' : 'Санкт-Петербург';
+
+/// Временный allowlist руководителя (роль назначается по email при входе).
+/// Пароль хранится только в Firebase Authentication, не в исходниках.
+const String managerBootstrapEmail = 'dom-tuap@yandex.ru';
+
+bool isManagerBootstrapEmail(String email) =>
+    email.trim().toLowerCase() == managerBootstrapEmail.toLowerCase();

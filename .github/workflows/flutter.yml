@@ -38,6 +38,9 @@ jobs:
       - name: Verify maintenance scripts
         run: python -m compileall -q scripts
 
+      - name: Install system SQLite
+        run: sudo apt-get update && sudo apt-get install -y libsqlite3-dev
+
       - name: Install dependencies
         run: flutter pub get
 

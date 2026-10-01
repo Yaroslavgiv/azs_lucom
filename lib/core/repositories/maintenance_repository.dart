@@ -70,6 +70,15 @@ class MaintenanceRepository {
     };
   }
 
+  Future<int> countDoneForCurrentMonth() async {
+    final month = _currentMonth();
+    final rows = await _db.db.rawQuery(
+      "SELECT COUNT(*) AS c FROM maintenance WHERE month = ? AND status = 'done'",
+      [month],
+    );
+    return (rows.first['c'] as int?) ?? 0;
+  }
+
   Future<Map<String, String?>?> getLastDone(String stationNumber) async {
     final rows = await _db.db.query(
       'maintenance',

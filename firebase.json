@@ -19,7 +19,9 @@
           "projectId": "my-home-chat-915a3",
           "configurations": {
             "android": "1:664415876236:android:0cc4a9efe8dd23c214b7a9",
-            "ios": "1:664415876236:ios:343fb9ffe5b81bf314b7a9"
+            "ios": "1:664415876236:ios:343fb9ffe5b81bf314b7a9",
+            "web": "1:664415876236:android:0cc4a9efe8dd23c214b7a9",
+            "windows": "1:664415876236:android:0cc4a9efe8dd23c214b7a9"
           }
         }
       }

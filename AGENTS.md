@@ -10,7 +10,9 @@ Flutter-приложение учёта заявок и ТО по АЗС (СПб
 - Облако: **Firebase** проект `my-home-chat-915a3` — Auth (email/password) + Cloud Firestore
 - Sync: `lib/core/services/sync_service.dart` (pull/push + `sync_queue` / `sync_map`)
 - Excel: пакет **`excel`** + **`share_plus`** (не Syncfusion, не csv)
-- Карта: вендорный пакет `packages/ntk_map_view` (MapLibre в WebView)
+- Карта: вендорный пакет `packages/ntk_map_view` (MapLibre: WebView на mobile, iframe на web — как в edet_gruz)
+- Desktop/web: SQLite через `sqflite_common_ffi` / `sqflite_common_ffi_web` (см. `lib/core/bootstrap*.dart`)
+- Web руководитель/админ: `ManagerWebShell` (Обзор / Заявки / Станции / Отчёты / Пользователи)
 - Сеть: DaData Suggest (геокодинг) + Firestore sync
 
 ## Архитектура

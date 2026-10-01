@@ -30,13 +30,25 @@ dependencies:
   cloud_firestore: ^6.8.0
   firebase_auth: ^6.5.7
   connectivity_plus: ^7.3.1
+  sqflite_common_ffi: ^2.4.0+3
+  sqflite_common_ffi_web: ^1.1.1
+  pointer_interceptor: 0.10.1+2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.3
-  sqflite_common_ffi: 2.4.0+3
+
+# sqflite_common_ffi тянет package:sqlite3, чей hook по умолчанию качает
+# нативные бинарники с GitHub. Для тестов и Android-сборки используем
+# системный SQLite: winsqlite3.dll на Windows, libsqlite3 на Linux/macOS.
+hooks:
+  user_defines:
+    sqlite3:
+      source: system
+      name_windows: winsqlite3
+      name: sqlite3
 
 flutter_launcher_icons:
   android: true
@@ -52,3 +64,6 @@ flutter:
     - assets/operational_data.json
     - assets/station_equipment.json
     - assets/templates/defect_act_template.docx
+    - packages/ntk_map_view/lib/assets/map.html
+    - packages/ntk_map_view/lib/assets/map_mobile.html
+    - packages/ntk_map_view/lib/assets/markers/

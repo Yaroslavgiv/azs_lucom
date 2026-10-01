@@ -15,6 +15,8 @@
 
 Используют временную SQLite-базу и проверяют CRUD, транзакции, фильтры,
 идемпотентный seed и постановку операций в очередь синхронизации.
+Тесты берут системный SQLite (`hooks.user_defines.sqlite3.source: system`),
+а не бинарники с GitHub: на Linux нужен `libsqlite3-dev`, на Windows — `sqlite3.dll`.
 
 ### Widget tests
 

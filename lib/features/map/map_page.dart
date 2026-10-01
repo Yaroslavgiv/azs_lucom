@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ntk_map_view/ntk_map_view.dart';
@@ -7,12 +8,14 @@ import '../../core/models/station.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/repositories/maintenance_repository.dart';
 import '../../core/services/location_service.dart';
-import '../../core/theme/app_colors.dart';
 import '../../shared/dialogs/station_marker_dialog.dart';
 import '../../shared/widgets/app_buttons.dart';
 import '../../shared/widgets/glass_card.dart';
+import 'map_region_chip.dart';
 import 'station_marker_style.dart';
 
+/// Карта АЗС через ntk_map_view как в edet_gruz:
+/// web — HtmlElementView + map.html, mobile — WebView + map_mobile.html.
 class MapPage extends ConsumerStatefulWidget {
   const MapPage({super.key});
 
@@ -31,6 +34,10 @@ class _MapPageState extends ConsumerState<MapPage> {
   int _spbCount = 0;
   int _novgorodCount = 0;
 
+  static String get _mapPath => kIsWeb
+      ? 'packages/ntk_map_view/lib/assets/map.html'
+      : 'packages/ntk_map_view/lib/assets/map_mobile.html';
+
   List<Station> _stationsForRegion(String? region) {
     if (region == null) return _allStations;
     return _allStations.where((s) => s.region == region).toList();
@@ -40,24 +47,17 @@ class _MapPageState extends ConsumerState<MapPage> {
     await _controller.removeAllMarkers();
     _controller.markers.clear();
 
-    final markers = <MapMarker>[];
     for (final station in stations) {
       final point = LatLng(station.lat!, station.lon!);
-      final markerTitle = station.name.isNotEmpty
-          ? '${station.name} (№${station.number})'
-          : '№${station.number}';
       final iconUrl = resolveStationMarkerStyle(
         maintenanceDone: _statuses?[station.number]?.isDone == true,
         highlighted: highlightedStationNumbers.contains(station.number),
       ).iconUrl;
 
-      markers.add(
-        MapMarker(
-          id: 'station_${station.number}',
-          point: point,
-          popup: MapMarkerPopup(title: markerTitle),
-          icon: MapMarkerIconModel(iconUrl: iconUrl, width: 30, height: 40),
-        ),
+      final marker = MapMarker(
+        id: 'station_${station.number}',
+        point: point,
+        icon: MapMarkerIconModel(iconUrl: iconUrl, width: 30, height: 40),
       );
 
       _controller.markers[point] = (_) {
@@ -65,9 +65,7 @@ class _MapPageState extends ConsumerState<MapPage> {
           showStationMarkerDialog(context, station: station);
         }
       };
-    }
 
-    for (final marker in markers) {
       await _controller.addMarker(marker: marker, noCluster: true);
     }
 
@@ -96,9 +94,8 @@ class _MapPageState extends ConsumerState<MapPage> {
           _allStations = stations;
           _statuses = statuses;
           _spbCount = stations.where((s) => s.region == regionSpb).length;
-          _novgorodCount = stations
-              .where((s) => s.region == regionNovgorod)
-              .length;
+          _novgorodCount =
+              stations.where((s) => s.region == regionNovgorod).length;
         });
       }
 
@@ -164,7 +161,7 @@ class _MapPageState extends ConsumerState<MapPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (_spbCount > 0) ...[
-                        _RegionCountChip(
+                        MapRegionCountChip(
                           label: 'СПб',
                           count: _spbCount,
                           selected: _focusedRegion == regionSpb,
@@ -173,7 +170,7 @@ class _MapPageState extends ConsumerState<MapPage> {
                         if (_novgorodCount > 0) const SizedBox(width: 8),
                       ],
                       if (_novgorodCount > 0)
-                        _RegionCountChip(
+                        MapRegionCountChip(
                           label: regionLabelNovgorod,
                           count: _novgorodCount,
                           selected: _focusedRegion == regionNovgorod,
@@ -194,7 +191,7 @@ class _MapPageState extends ConsumerState<MapPage> {
                 ),
                 child: NtkMapView(
                   mapController: _controller,
-                  mapPath: 'packages/ntk_map_view/lib/assets/map_mobile.html',
+                  mapPath: _mapPath,
                   styleUrl: mapStyleLight,
                   onCreateEnd: (controller) async {
                     if (mounted) setState(() => _mapReady = true);
@@ -238,75 +235,30 @@ class _MapPageState extends ConsumerState<MapPage> {
                 Positioned(
                   right: 16,
                   bottom: 16,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      AppGlassFab(
-                        tooltip: 'Моё местоположение',
-                        icon: Icons.my_location,
-                        loading: _locating,
-                        onPressed: _goToMyLocation,
-                      ),
-                      const SizedBox(height: 10),
-                      AppGlassFab(
-                        tooltip: 'Обновить маркеры',
-                        icon: Icons.refresh,
-                        onPressed: _loadMarkers,
-                      ),
-                    ],
+                  child: WebViewAware(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        AppGlassFab(
+                          tooltip: 'Моё местоположение',
+                          icon: Icons.my_location,
+                          loading: _locating,
+                          onPressed: _goToMyLocation,
+                        ),
+                        const SizedBox(height: 10),
+                        AppGlassFab(
+                          tooltip: 'Обновить маркеры',
+                          icon: Icons.refresh,
+                          onPressed: _loadMarkers,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
             ],
           ),
         ),
       ],
-    );
-  }
-}
-
-class _RegionCountChip extends StatelessWidget {
-  const _RegionCountChip({
-    required this.label,
-    required this.count,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final int count;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: selected
-                ? AppColors.accent.withValues(alpha: 0.25)
-                : AppColors.accent.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: selected
-                  ? AppColors.accent
-                  : AppColors.accent.withValues(alpha: 0.35),
-            ),
-          ),
-          child: Text(
-            '$label: $count',
-            style: TextStyle(
-              color: selected ? AppColors.accent : AppColors.textSecondary,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

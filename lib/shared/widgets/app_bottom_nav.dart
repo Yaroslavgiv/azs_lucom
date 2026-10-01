@@ -2,16 +2,55 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
 
+class AppBottomNavItem {
+  const AppBottomNavItem({
+    required this.outlinedIcon,
+    required this.filledIcon,
+    required this.label,
+  });
+
+  final IconData outlinedIcon;
+  final IconData filledIcon;
+  final String label;
+}
+
 class AppBottomNav extends StatelessWidget {
-  const AppBottomNav({super.key, required this.index, required this.onChanged});
+  const AppBottomNav({
+    super.key,
+    required this.index,
+    required this.onChanged,
+    this.items = defaultItems,
+  });
 
   final int index;
   final ValueChanged<int> onChanged;
+  final List<AppBottomNavItem> items;
 
-  static const _items = [
-    (Icons.map_outlined, Icons.map, 'Карта'),
-    (Icons.local_gas_station_outlined, Icons.local_gas_station, 'Станции'),
-    (Icons.upload_file_outlined, Icons.upload_file, 'Экспорт'),
+  static const defaultItems = [
+    AppBottomNavItem(
+      outlinedIcon: Icons.map_outlined,
+      filledIcon: Icons.map,
+      label: 'Карта',
+    ),
+    AppBottomNavItem(
+      outlinedIcon: Icons.local_gas_station_outlined,
+      filledIcon: Icons.local_gas_station,
+      label: 'Станции',
+    ),
+    AppBottomNavItem(
+      outlinedIcon: Icons.upload_file_outlined,
+      filledIcon: Icons.upload_file,
+      label: 'Экспорт',
+    ),
+  ];
+
+  static const managerItems = [
+    ...defaultItems,
+    AppBottomNavItem(
+      outlinedIcon: Icons.admin_panel_settings_outlined,
+      filledIcon: Icons.admin_panel_settings,
+      label: 'Панель',
+    ),
   ];
 
   @override
@@ -34,14 +73,14 @@ class AppBottomNav extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(6),
           child: Row(
-            children: List.generate(_items.length, (i) {
-              final item = _items[i];
+            children: List.generate(items.length, (i) {
+              final item = items[i];
               final selected = i == index;
               return Expanded(
                 child: _NavItem(
                   selected: selected,
-                  icon: selected ? item.$2 : item.$1,
-                  label: item.$3,
+                  icon: selected ? item.filledIcon : item.outlinedIcon,
+                  label: item.label,
                   onTap: () => onChanged(i),
                 ),
               );

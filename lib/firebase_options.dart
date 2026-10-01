@@ -17,10 +17,7 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'DefaultFirebaseOptions have not been configured for web - '
-        'you can reconfigure this by running the FlutterFire CLI again.',
-      );
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -33,10 +30,7 @@ class DefaultFirebaseOptions {
           'you can reconfigure this by running the FlutterFire CLI again.',
         );
       case TargetPlatform.windows:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for windows - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return windows;
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -49,6 +43,17 @@ class DefaultFirebaseOptions {
     }
   }
 
+  /// Uses the Android client until a dedicated Web app is registered in
+  /// Firebase Console (`flutterfire configure`).
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyCgVWCsysFJepXRr6iX0voS5yNg7qaQdOE',
+    appId: '1:664415876236:android:0cc4a9efe8dd23c214b7a9',
+    messagingSenderId: '664415876236',
+    projectId: 'my-home-chat-915a3',
+    authDomain: 'my-home-chat-915a3.firebaseapp.com',
+    storageBucket: 'my-home-chat-915a3.firebasestorage.app',
+  );
+
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyCgVWCsysFJepXRr6iX0voS5yNg7qaQdOE',
     appId: '1:664415876236:android:0cc4a9efe8dd23c214b7a9',
@@ -56,6 +61,7 @@ class DefaultFirebaseOptions {
     projectId: 'my-home-chat-915a3',
     storageBucket: 'my-home-chat-915a3.firebasestorage.app',
   );
+
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyA2UYKdkpJTIUzGyyUfiIE1yuZty4xDz8g',
     appId: '1:664415876236:ios:343fb9ffe5b81bf314b7a9',
@@ -63,5 +69,16 @@ class DefaultFirebaseOptions {
     projectId: 'my-home-chat-915a3',
     storageBucket: 'my-home-chat-915a3.firebasestorage.app',
     iosBundleId: 'com.azs.azsApp',
+  );
+
+  /// Windows desktop uses the same Firebase project. Prefer a dedicated
+  /// Windows/Web app ID from FlutterFire once Console access is available.
+  static const FirebaseOptions windows = FirebaseOptions(
+    apiKey: 'AIzaSyCgVWCsysFJepXRr6iX0voS5yNg7qaQdOE',
+    appId: '1:664415876236:android:0cc4a9efe8dd23c214b7a9',
+    messagingSenderId: '664415876236',
+    projectId: 'my-home-chat-915a3',
+    authDomain: 'my-home-chat-915a3.firebaseapp.com',
+    storageBucket: 'my-home-chat-915a3.firebasestorage.app',
   );
 }

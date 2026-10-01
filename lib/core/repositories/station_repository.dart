@@ -29,6 +29,19 @@ class StationRepository {
     return rows.map(Station.fromMap).toList();
   }
 
+  Future<List<Station>> getAll() async {
+    final rows = await _db.db.query(
+      'stations',
+      orderBy: 'region, CAST(number AS INTEGER)',
+    );
+    return rows.map(Station.fromMap).toList();
+  }
+
+  Future<int> countAll() async {
+    final rows = await _db.db.rawQuery('SELECT COUNT(*) AS c FROM stations');
+    return (rows.first['c'] as int?) ?? 0;
+  }
+
   Future<List<Station>> getNeedingGeocode() async {
     final rows = await _db.db.query(
       'stations',

@@ -9,3 +9,7 @@ String formatMaintenanceDate(String? raw) {
     return raw;
   }
 }
+
+String formatRuDateTime(DateTime value) {
+  return DateFormat('dd.MM.yyyy HH:mm').format(value.toLocal());
+}

@@ -16,15 +16,18 @@ class LoginPage extends ConsumerStatefulWidget {
 }
 
 class _LoginPageState extends ConsumerState<LoginPage> {
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _busy = false;
   bool _obscure = true;
   bool _isRegister = false;
   String? _error;
+  String? _info;
 
   @override
   void dispose() {
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -33,26 +36,43 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Future<void> _submit() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
+    final displayName = _nameController.text.trim();
     final validationError = validateAuthCredentials(
       email: email,
       password: password,
       isRegistration: _isRegister,
+      displayName: displayName,
     );
     if (validationError != null) {
-      setState(() => _error = validationError);
+      setState(() {
+        _error = validationError;
+        _info = null;
+      });
       return;
     }
 
     setState(() {
       _busy = true;
       _error = null;
+      _info = null;
     });
     try {
       final authRepository = ref.read(authRepositoryProvider);
       if (_isRegister) {
-        await authRepository.register(email: email, password: password);
+        await authRepository.register(
+          email: email,
+          password: password,
+          displayName: displayName,
+        );
       } else {
         await authRepository.signIn(email: email, password: password);
+      }
+    } on RegistrationPendingFailure catch (error) {
+      if (mounted) {
+        setState(() {
+          _isRegister = false;
+          _info = error.message;
+        });
       }
     } on AuthFailure catch (error) {
       if (mounted) setState(() => _error = error.message);
@@ -79,19 +99,33 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        _isRegister ? 'Регистрация' : 'Вход',
+                        _isRegister ? 'Заявка на регистрацию' : 'Вход',
                         style: Theme.of(context).textTheme.headlineSmall,
                       ),
                       const SizedBox(height: 8),
                       Text(
                         _isRegister
-                            ? 'Создайте аккаунт для синхронизации с облаком.'
-                            : 'Войдите, чтобы синхронизировать данные с облаком.',
+                            ? 'Специалист отправляет заявку. Руководитель '
+                                  'одобряет доступ в панели управления.'
+                            : 'Войдите по email. Доступ зависит от роли и '
+                                  'статуса аккаунта.',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: AppColors.textSecondary,
                         ),
                       ),
                       const SizedBox(height: 20),
+                      if (_isRegister) ...[
+                        TextField(
+                          controller: _nameController,
+                          textCapitalization: TextCapitalization.words,
+                          autofillHints: const [AutofillHints.name],
+                          decoration: const InputDecoration(
+                            labelText: 'ФИО',
+                            prefixIcon: Icon(Icons.badge_outlined),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
                       TextField(
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
@@ -128,6 +162,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           style: const TextStyle(color: AppColors.error),
                         ),
                       ],
+                      if (_info != null) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          _info!,
+                          style: const TextStyle(color: AppColors.success),
+                        ),
+                      ],
                       const SizedBox(height: 20),
                       if (_busy)
                         const Center(
@@ -137,7 +178,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         )
                       else ...[
                         AppPrimaryButton(
-                          label: _isRegister ? 'Зарегистрироваться' : 'Войти',
+                          label: _isRegister
+                              ? 'Отправить заявку'
+                              : 'Войти',
                           icon: _isRegister
                               ? Icons.person_add_alt_1
                               : Icons.login,
@@ -147,13 +190,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         AppSecondaryButton(
                           label: _isRegister
                               ? 'Уже есть аккаунт — войти'
-                              : 'Нет аккаунта — зарегистрироваться',
+                              : 'Нет аккаунта — заявка на регистрацию',
                           icon: _isRegister
                               ? Icons.login
                               : Icons.person_add_outlined,
                           onPressed: () => setState(() {
                             _isRegister = !_isRegister;
                             _error = null;
+                            _info = null;
                           }),
                         ),
                       ],
